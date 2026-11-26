@@ -1,257 +1,871 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>หารกัน</title>
-<style>
-:root{--bg:#f4f6f5;--card:#fff;--text:#17211d;--mute:#66736d;--line:#dbe2de;--main:#0f7a55;--bad:#b3362b}
-@media(prefers-color-scheme:dark){:root{--bg:#101513;--card:#19201d;--text:#e8eeeb;--mute:#93a29b;--line:#2c3732;--main:#3dbd8c;--bad:#f0887d}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,"Noto Sans Thai",sans-serif}
-main{max-width:640px;margin:auto;padding:16px}
-h1{font-size:1.4rem;margin:8px 0}h2{font-size:1.1rem;margin:0 0 8px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
-label{display:block;font-size:.85rem;color:var(--mute);margin-top:8px}
-input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit}
-button{padding:9px 14px;border:0;border-radius:8px;background:var(--main);color:var(--card);font:inherit;cursor:pointer;margin:8px 6px 0 0}
-button.alt{background:transparent;color:var(--main);border:1px solid var(--main)}
-button.del{background:transparent;color:var(--bad);border:1px solid var(--bad)}
-button:disabled{opacity:.5}
-.row{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.chips label{display:flex;gap:6px;align-items:center;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:99px;color:var(--text)}
-.chips input{width:auto}
-.item{border-top:1px dashed var(--line);margin-top:12px;padding-top:4px}
-.mute{color:var(--mute);font-size:.85rem}.plus{color:var(--main)}.minus{color:var(--bad)}
-nav button{margin-top:0}
-#msg{position:fixed;left:16px;right:16px;bottom:16px;margin:auto;max-width:608px;padding:12px;border-radius:8px;background:var(--text);color:var(--bg);display:none;z-index:9}
-img.qr{display:block;margin:10px auto 0;background:#fff;padding:8px;width:220px;max-width:100%}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GroupSync - จัดทริป ตี้กีฬา & หารเงินอัจฉริยะ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+    .loader { border-top-color: #2563eb; animation: spinner 0.8s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
 </head>
-<body>
-<main id="app"></main>
-<div id="msg" role="status"></div>
-<script>
-// ใส่ URL ของ Web App (ลงท้าย /exec) ที่ได้จาก Apps Script
-const API_URL = 'https://script.google.com/macros/s/AKfycbzqsWCbf2oiXiRlpDFovS6uc1R1_scAE9mSdhE1bBcfI7W0XOlEH7XEEm9haqwteUcB/exec';
+<body class="text-slate-800 pb-20">
 
-const store = {
-  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-};
-let session = store.get('session'), data = null, gid = null, tab = 'bills', busy = false;
-const $ = s => document.querySelector(s);
-const app = $('#app');
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const baht = s => (s/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const satang = v => Math.round(Number(v)*100);
-const nameOf = id => esc(data.members.find(m => m.id === id)?.name || '?');
+  <!-- Loading Overlay -->
+  <div id="loading" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
+    <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-3"></div>
+    <p class="text-white font-medium text-sm">กำลังซิงค์ข้อมูลกับ Google Sheets...</p>
+  </div>
 
-function toast(text){
-  const m = $('#msg'); m.textContent = text; m.style.display = 'block';
-  clearTimeout(toast.t); toast.t = setTimeout(() => m.style.display = 'none', 4000);
-}
-// ส่งเป็น text/plain เพื่อไม่ให้เกิด CORS preflight ซึ่ง Apps Script ไม่รองรับ
-async function api(action, payload = {}){
-  const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action, payload, token: session?.token})});
-  const j = await res.json();
-  if(!j.ok){
-    if(j.error.startsWith('AUTH')){ session = null; store.set('session', null); render(); }
-    throw new Error(j.error);
-  }
-  return j.data;
-}
-async function run(fn){
-  if(busy) return;
-  busy = true; document.body.style.cursor = 'progress';
-  app.querySelectorAll('button').forEach(b => b.disabled = true);
-  try{ await fn(); }
-  catch(e){ toast(e.message); }
-  finally{ busy = false; document.body.style.cursor = ''; app.querySelectorAll('button').forEach(b => b.disabled = false); }
-}
-async function load(){ data = await api('groupData', {groupId: gid}); render(); }
-const form = f => Object.fromEntries(new FormData(f));
-const field = (name, label, attrs = '') => `<label>${label}<input name="${name}" ${attrs}></label>`;
-const options = (list, selected) => list.map(([v,t]) => `<option value="${v}" ${v===selected?'selected':''}>${t}</option>`).join('');
-const chips = () => `<div class="chips">${data.members.map(m =>
-  `<label><input type="checkbox" value="${m.id}" checked>${esc(m.name)}</label>`).join('')}</div>`;
-const checked = el => [...el.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+  <!-- Top Navbar -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="showHome()">
+        <span class="bg-blue-600 text-white p-1.5 rounded-lg font-bold text-sm">GS</span>
+        <h1 class="font-bold text-lg tracking-wide">GroupSync</h1>
+      </div>
+      
+      <!-- User Selector -->
+      <div class="flex items-center gap-2">
+        <select id="currentUserSelect" onchange="changeCurrentUser()" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none">
+          <option value="">โหลดผู้ใช้...</option>
+        </select>
+        <button onclick="openModal('userModal')" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1.5 rounded-lg font-medium">+ สมาชิก</button>
+      </div>
+    </div>
+  </header>
 
-function render(){
-  if(!session) return renderAuth();
-  if(!gid || !data) return renderHome();
-  renderGroup();
-}
+  <!-- Main Container -->
+  <main class="max-w-3xl mx-auto px-4 pt-5">
 
-function renderAuth(){
-  app.innerHTML = `<h1>หารกัน</h1>
-  <form class="card" data-submit="login"><h2>เข้าสู่ระบบ</h2>
-    ${field('username','ชื่อผู้ใช้','required autocomplete="username"')}
-    ${field('password','รหัสผ่าน','type="password" required autocomplete="current-password"')}
-    <button>เข้าสู่ระบบ</button></form>
-  <form class="card" data-submit="register"><h2>สมัครสมาชิก</h2>
-    ${field('name','ชื่อที่แสดง','required maxlength="40"')}
-    ${field('username','ชื่อผู้ใช้ (a-z, 0-9)','required minlength="3"')}
-    ${field('password','รหัสผ่าน (8 ตัวขึ้นไป)','type="password" required minlength="8" autocomplete="new-password"')}
-    ${field('promptpay','พร้อมเพย์ (ไม่บังคับ)','inputmode="numeric"')}
-    <button>สมัคร</button></form>`;
-}
+    <!-- ==================== VIEW 1: HOME (รายการทริป & ตี้กีฬา) ==================== -->
+    <div id="homeView">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">กิจกรรมทั้งหมด</h2>
+          <p class="text-xs text-slate-500">เลือกทริปเที่ยว หรือห้องเล่นกีฬาเพื่อจัดการข้อมูล</p>
+        </div>
+        <button onclick="openModal('createEventModal')" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-sm transition">
+          + สร้างห้องใหม่
+        </button>
+      </div>
 
-async function renderHome(){
-  app.innerHTML = '<p class="mute">กำลังโหลด…</p>';
-  let groups;
-  try{ groups = await api('myGroups'); }
-  catch(e){ toast(e.message); if(session) app.innerHTML = '<button data-click="home">ลองใหม่</button>'; return; }
-  app.innerHTML = `<div class="row"><h1>สวัสดี ${esc(session.user.name)}</h1><button class="alt" data-click="logout">ออกจากระบบ</button></div>
-  <div class="card"><h2>กลุ่มของฉัน</h2>${groups.map(g =>
-    `<button class="alt" data-click="open" data-id="${g.id}">${esc(g.name)}</button>`).join('') || '<p class="mute">ยังไม่มีกลุ่ม สร้างใหม่หรือใส่รหัสเชิญด้านล่าง</p>'}</div>
-  <form class="card" data-submit="createGroup"><h2>สร้างกลุ่ม</h2>${field('name','ชื่อกลุ่ม','required')}<button>สร้าง</button></form>
-  <form class="card" data-submit="joinGroup"><h2>เข้าร่วมกลุ่ม</h2>${field('code','รหัสเชิญ','required')}<button>เข้าร่วม</button></form>
-  <form class="card" data-submit="profile"><h2>โปรไฟล์</h2>
-    ${field('name','ชื่อที่แสดง',`required value="${esc(session.user.name)}"`)}
-    ${field('promptpay','พร้อมเพย์',`inputmode="numeric" value="${esc(session.user.promptpay)}"`)}<button>บันทึก</button></form>`;
-}
+      <!-- Filter Tabs -->
+      <div class="flex gap-2 mb-4">
+        <button onclick="filterEvents('All')" id="filter-All" class="filter-btn bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded-full font-medium">ทั้งหมด</button>
+        <button onclick="filterEvents('Trip')" id="filter-Trip" class="filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium">✈️ ทริปเที่ยว</button>
+        <button onclick="filterEvents('Sport')" id="filter-Sport" class="filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium">🏸 ตี้กีฬา/กิจกรรม</button>
+      </div>
 
-function renderGroup(){
-  const tabs = {bills:'บิล', activities:'กิจกรรม', settle:'เคลียร์เงิน', members:'สมาชิก'};
-  app.innerHTML = `<div class="row"><h1>${esc(data.group.name)}</h1><span><button class="alt" data-click="refresh">รีเฟรช</button><button class="alt" data-click="home">กลับ</button></span></div>
-  <nav>${Object.entries(tabs).map(([k,v]) => `<button class="${k===tab?'':'alt'}" data-click="tab" data-id="${k}">${v}</button>`).join('')}</nav>
-  ${{bills:viewBills, activities:viewActivities, settle:viewSettle, members:viewMembers}[tab]()}`;
-  if(tab === 'bills'){ addItem(); preview(); }
-}
+      <!-- Events List -->
+      <div id="eventsList" class="grid gap-3"></div>
+    </div>
 
-function viewBills(){
-  const mem = data.members.map(m => [m.id, esc(m.name)]);
-  return `<form class="card" id="billForm" data-submit="createBill"><h2>เพิ่มบิล</h2>
-    ${field('title','ชื่อบิล','required')}
-    <label>ผู้สำรองจ่าย<select name="paidBy">${options(mem, session.user.id)}</select></label>
-    <label>กิจกรรม<select name="activityId">${options([['','ไม่ระบุ'], ...data.activities.map(a => [a.id, esc(a.title)])])}</select></label>
-    <label>วิธีแบ่ง<select name="type">${options([['equal','หารเท่ากัน'],['itemized','แยกหลายรายการ']])}</select></label>
-    <div id="equal">${field('total','ยอดรวม (บาท)','type="number" min="0.01" step="0.01"')}<label>คนร่วมหาร</label>${chips()}</div>
-    <div id="itemized" hidden><div id="items"></div>
-      <button type="button" class="alt" data-click="addItem">+ เพิ่มรายการ</button>
-      ${field('discount','ส่วนลด (บาท)','type="number" min="0" step="0.01" value="0"')}
-      ${field('service','ค่าบริการ (%)','type="number" min="0" max="100" step="0.01" value="0"')}
-      ${field('vat','VAT (%)','type="number" min="0" max="100" step="0.01" value="0"')}</div>
-    <p id="preview" class="mute"></p><button>บันทึกบิล</button></form>
-  ${[...data.bills].reverse().map(b => {
-    const act = data.activities.find(a => a.id === b.activityId);
-    return `<div class="card"><div class="row"><b>${esc(b.title)}</b><b>${baht(b.total)} ฿</b></div>
-    <div class="mute">${b.type==='equal'?'หารเท่ากัน':'แยกรายการ'} · ${nameOf(b.paidBy)} จ่ายก่อน${act?' · '+esc(act.title):''}</div>
-    ${(b.detail.items||[]).map(i => `<div class="row mute"><span>${esc(i.name)} (${i.participants.map(nameOf).join(', ')})</span><span>${baht(i.price)}</span></div>`).join('')}
-    ${b.type==='itemized'?`<div class="mute">ส่วนลด ${baht(b.detail.discount)} ฿ · ค่าบริการ ${b.detail.service}% · VAT ${b.detail.vat}%</div>`:''}
-    ${Object.entries(b.shares).map(([u,v]) => `<div class="row"><span>${nameOf(u)}</span><span>${baht(v)}</span></div>`).join('')}
-    ${b.createdBy===session.user.id||data.group.ownerId===session.user.id?`<button class="del" data-click="deleteBill" data-id="${b.id}">ลบบิล</button>`:''}</div>`;
-  }).join('')}`;
-}
+    <!-- ==================== VIEW 2: EVENT DETAIL (หน้ารายละเอียด) ==================== -->
+    <div id="detailView" class="hidden">
+      <button onclick="showHome()" class="text-xs text-blue-600 font-medium mb-3 inline-flex items-center gap-1 hover:underline">
+        ← กลับหน้าหลัก
+      </button>
 
-function addItem(){
-  const d = document.createElement('div');
-  d.className = 'item';
-  d.innerHTML = `<label>ชื่อรายการ<input class="iname"></label><label>ราคารวมของรายการ (บาท)<input class="iprice" type="number" min="0.01" step="0.01"></label>${chips()}
-  <button type="button" class="del" data-click="removeItem">ลบรายการ</button>`;
-  $('#items').appendChild(d);
-}
-function billPayload(){
-  const f = $('#billForm'), v = form(f);
-  const p = {groupId: gid, title: v.title, paidBy: v.paidBy, activityId: v.activityId, type: v.type};
-  if(v.type === 'equal') return {...p, total: satang(v.total), participants: checked($('#equal'))};
-  return {...p, discount: satang(v.discount), service: Number(v.service), vat: Number(v.vat),
-    items: [...f.querySelectorAll('.item')].map(d => ({name: d.querySelector('.iname').value,
-      price: satang(d.querySelector('.iprice').value), participants: checked(d)}))};
-}
-function preview(){
-  const p = billPayload();
-  $('#equal').hidden = p.type !== 'equal';
-  $('#itemized').hidden = p.type === 'equal';
-  let text;
-  if(p.type === 'equal'){
-    const n = p.participants.length;
-    text = n && p.total > 0 ? `${n} คน คนละประมาณ ${baht(p.total/n)} ฿` : '';
-  } else {
-    const sub = p.items.reduce((a,i) => a + i.price, 0);
-    const total = Math.round((sub - p.discount)*(1+p.service/100)*(1+p.vat/100) + 1e-7);
-    text = sub > 0 ? `ยอดรายการ ${baht(sub)} ฿ · ยอดสุทธิ ${baht(total)} ฿` : '';
-  }
-  $('#preview').textContent = text;
-}
+      <!-- Event Header Card -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-4">
+        <div class="flex justify-between items-start gap-2">
+          <div>
+            <span id="detBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Trip</span>
+            <h2 id="detTitle" class="text-xl font-bold text-slate-900 mt-1">ชื่อทริป</h2>
+            <p id="detDesc" class="text-xs text-slate-500 mt-1">รายละเอียด</p>
+          </div>
+          <button id="btnJoinEvent" onclick="joinCurrentEvent()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm shrink-0">
+            + เข้าร่วม
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t text-xs text-slate-600">
+          <div>📍 <span id="detLocation">-</span></div>
+          <div>🕒 <span id="detDateTime">-</span></div>
+          <div>👥 รับจำนวน: <span id="detCapacity" class="font-semibold">0/0</span></div>
+          <div>🏆 ระดับ: <span id="detSkill">-</span></div>
+        </div>
+      </div>
 
-function viewActivities(){
-  const word = {yes:'ไป', maybe:'ยังไม่แน่ใจ', no:'ไม่ไป'};
-  return `<form class="card" data-submit="createActivity"><h2>สร้างกิจกรรม</h2>
-    ${field('title','ชื่อกิจกรรม','required')}${field('date','วันและเวลา','type="datetime-local" required')}${field('location','สถานที่')}<button>สร้าง</button></form>
-  ${[...data.activities].sort((a,b) => a.date.localeCompare(b.date)).map(a => {
-    const spent = data.bills.filter(b => b.activityId === a.id).reduce((s,b) => s + b.total, 0);
-    return `<div class="card"><b>${esc(a.title)}</b>
-    <div class="mute">${esc(new Date(a.date).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}))} ${esc(a.location)} · ใช้ไป ${baht(spent)} ฿</div>
-    ${Object.entries(word).map(([k,v]) => `<button class="${a.rsvps[session.user.id]===k?'':'alt'}" data-click="rsvp" data-id="${a.id}" data-v="${k}">${v}</button>`).join('')}
-    ${Object.entries(word).map(([k,v]) => `<div class="mute">${v}: ${Object.keys(a.rsvps).filter(u => a.rsvps[u]===k).map(nameOf).join(', ') || '-'}</div>`).join('')}</div>`;
-  }).join('')}`;
-}
+      <!-- Navigation Tabs inside Event -->
+      <div class="grid grid-cols-3 bg-slate-200/70 p-1 rounded-xl mb-4 text-xs font-semibold">
+        <button onclick="switchTab('tab-plan')" id="btn-tab-plan" class="tab-btn bg-white text-slate-900 py-2 rounded-lg shadow-sm">
+          🗺️ แผน & โหวต
+        </button>
+        <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn text-slate-600 py-2 rounded-lg">
+          ✅ สมาชิก & เช็กชื่อ
+        </button>
+        <button onclick="switchTab('tab-expense')" id="btn-tab-expense" class="tab-btn text-slate-600 py-2 rounded-lg">
+          💸 หารค่าใช้จ่าย
+        </button>
+      </div>
 
-function viewSettle(){
-  const me = session.user.id, state = {pending:'รอยืนยัน', confirmed:'จ่ายแล้ว', rejected:'ถูกปฏิเสธ'};
-  return `<div class="card"><h2>ยอดสุทธิ</h2>${data.members.map(m => { const v = data.balances[m.id] || 0;
-    return `<div class="row"><span>${esc(m.name)}</span><span class="${v<0?'minus':'plus'}">${v<0?'ต้องจ่าย':v>0?'ต้องได้รับ':'ครบแล้ว'} ${v?baht(Math.abs(v))+' ฿':''}</span></div>`; }).join('')}</div>
-  <div class="card"><h2>ใครต้องโอนให้ใคร</h2>${data.settlements.map(s => {
-    const to = data.members.find(m => m.id === s.toId);
-    return `<div class="item"><div class="row"><span>${nameOf(s.fromId)} → ${nameOf(s.toId)}</span><b>${baht(s.amount)} ฿</b></div>
-    ${s.fromId===me ? (to.promptpay
-        ? `<div class="mute">พร้อมเพย์ ${esc(to.promptpay)}</div><button class="alt" data-click="qr" data-pp="${esc(to.promptpay)}" data-amt="${s.amount}">แสดง QR</button>`
-        : '<div class="mute">ผู้รับยังไม่ได้ใส่พร้อมเพย์</div>')
-      + `<button data-click="pay" data-id="${s.toId}" data-amt="${s.amount}">แจ้งว่าโอนแล้ว</button><div></div>` : ''}</div>`;
-  }).join('') || '<p class="mute">ไม่มียอดค้าง</p>'}</div>
-  <div class="card"><h2>ประวัติการจ่าย</h2>${[...data.payments].reverse().map(p => `<div class="item">
-    <div class="row"><span>${nameOf(p.fromId)} → ${nameOf(p.toId)} ${baht(p.amount)} ฿</span><span class="mute">${state[p.status]}</span></div>
-    ${p.status==='pending'&&p.toId===me?`<button data-click="review" data-id="${p.id}" data-v="1">ได้รับแล้ว</button><button class="del" data-click="review" data-id="${p.id}" data-v="0">ปฏิเสธ</button>`:''}</div>`).join('') || '<p class="mute">ยังไม่มีรายการ</p>'}</div>`;
-}
+      <!-- TAB 1: ITINERARY & POLLS -->
+      <div id="tab-plan" class="tab-content">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-sm text-slate-800">ตารางกิจกรรม / โหวตสถานที่ & ตั๋ว</h3>
+          <button onclick="openModal('itineraryModal')" class="bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มสถานที่/แนบตั๋ว</button>
+        </div>
+        <div id="itineraryList" class="space-y-2.5"></div>
+      </div>
 
-function viewMembers(){
-  return `<div class="card"><h2>รหัสเชิญ: ${esc(data.group.code)}</h2><p class="mute">ส่งรหัสนี้ให้เพื่อนเพื่อเข้ากลุ่ม</p>
-  ${data.members.map(m => `<div class="row"><span>${esc(m.name)}</span><span class="mute">${m.id===data.group.ownerId?'เจ้าของกลุ่ม':'สมาชิก'}</span></div>`).join('')}</div>`;
-}
+      <!-- TAB 2: PARTICIPANTS & CHECK-IN -->
+      <div id="tab-members" class="tab-content hidden">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <h3 class="font-bold text-sm text-slate-800 mb-3">รายชื่อผู้เข้าร่วม (เช็กชื่อหน้างาน)</h3>
+          <div id="participantsList" class="divide-y"></div>
+        </div>
+      </div>
 
-function saveSession(s){ session = s; store.set('session', s); }
-async function openGroup(id){ gid = id; data = null; tab = 'bills'; await load(); }
+      <!-- TAB 3: EXPENSE SPLITTING (หาร 2 แบบ + สรุปยอดโอน) -->
+      <div id="tab-expense" class="tab-content hidden space-y-4">
+        
+        <!-- Settlement Summary Card (สรุปยอดโอนสุทธิ) -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm flex items-center gap-1.5">⚡ สรุปยอดโอนสุทธิ (หักลบหนี้แล้ว)</h3>
+            <span class="text-[11px] bg-white/10 px-2 py-0.5 rounded">โอนน้อยครั้งที่สุด</span>
+          </div>
+          <div id="settlementList" class="space-y-2 text-xs"></div>
+        </div>
 
-const submits = {
-  login: async v => { saveSession(await api('login', v)); render(); },
-  register: async v => { saveSession(await api('register', v)); render(); },
-  createGroup: async v => openGroup((await api('createGroup', v)).id),
-  joinGroup: async v => openGroup((await api('joinGroup', v)).id),
-  profile: async v => { const user = await api('updateProfile', v); saveSession({...session, user}); toast('บันทึกแล้ว'); },
-  createActivity: async v => { await api('createActivity', {...v, groupId: gid}); await load(); },
-  createBill: async () => { await api('createBill', billPayload()); await load(); toast('บันทึกบิลแล้ว'); }
-};
-const clicks = {
-  logout: () => run(async () => { try{ await api('logout'); } finally { saveSession(null); gid = data = null; render(); } }),
-  home: () => { gid = data = null; render(); },
-  open: el => run(() => openGroup(el.dataset.id)),
-  refresh: () => run(load),
-  tab: el => { tab = el.dataset.id; render(); },
-  addItem: () => { addItem(); preview(); },
-  removeItem: el => { el.closest('.item').remove(); preview(); },
-  deleteBill: el => confirm('ลบบิลนี้?') && run(async () => { await api('deleteBill', {billId: el.dataset.id}); await load(); }),
-  rsvp: el => run(async () => { await api('rsvp', {activityId: el.dataset.id, status: el.dataset.v}); await load(); }),
-  qr: el => {
-    const box = el.parentElement.lastElementChild;
-    // ใช้บริการ promptpay.io สร้างภาพ QR (เบอร์/เลขและยอดจะถูกส่งไปที่บริการนี้)
-    box.innerHTML = `<img class="qr" alt="QR พร้อมเพย์" src="https://promptpay.io/${encodeURIComponent(el.dataset.pp)}/${(el.dataset.amt/100).toFixed(2)}.png"><div class="mute">ตรวจชื่อผู้รับและยอดในแอปธนาคารก่อนโอน</div>`;
-  },
-  pay: el => confirm('ยืนยันว่าคุณโอนเงินแล้ว?') && run(async () => { await api('createPayment', {groupId: gid, toId: el.dataset.id, amount: Number(el.dataset.amt)}); await load(); }),
-  review: el => run(async () => { await api('reviewPayment', {paymentId: el.dataset.id, approve: el.dataset.v === '1'}); await load(); })
-};
+        <!-- Expense Header & Add Button -->
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-slate-800">รายการบิลค่าใช้จ่าย</h3>
+            <p class="text-[11px] text-slate-500">รองรับทั้งแบบหารเท่า และแยกตามรายการ</p>
+          </div>
+          <button onclick="openExpenseModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm">
+            + เพิ่มบิลหารเงิน
+          </button>
+        </div>
 
-app.addEventListener('submit', e => { e.preventDefault(); const f = e.target; run(() => submits[f.dataset.submit](form(f))); });
-app.addEventListener('click', e => { const el = e.target.closest('[data-click]'); if(el && !busy) clicks[el.dataset.click](el); });
-app.addEventListener('input', e => { if(e.target.closest('#billForm')) preview(); });
-app.addEventListener('change', e => { if(e.target.closest('#billForm')) preview(); });
+        <!-- Expenses List -->
+        <div id="expensesList" class="space-y-2.5"></div>
+      </div>
+    </div>
 
-if(API_URL.startsWith('PASTE')) app.innerHTML = '<div class="card"><h2>ยังไม่ได้ตั้งค่า</h2>แก้ค่า API_URL ใน index.html ตามคู่มือ README.md</div>';
-else render();
-</script>
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal 1: สร้างสมาชิกใหม่ -->
+  <div id="userModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
+      <h3 class="font-bold text-base mb-3">เพิ่มสมาชิกใหม่</h3>
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อเล่น / ชื่อแสดงในระบบ *</label>
+          <input type="text" id="newUserName" placeholder="เช่น นนท์, แพรว" class="w-full border rounded-xl px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">เบอร์พร้อมเพย์ / เลขบัตร (สำหรับรับเงินโอน)</label>
+          <input type="text" id="newUserPromptPay" placeholder="เช่น 0812345678" class="w-full border rounded-xl px-3 py-2">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal('userModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
+        <button onclick="submitNewUser()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: สร้างทริป / ตี้กีฬา -->
+  <div id="createEventModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
+      <h3 class="font-bold text-base mb-3">สร้างทริป หรือ ห้องเล่นกีฬา</h3>
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">ประเภทกิจกรรม</label>
+          <select id="evType" class="w-full border rounded-xl px-3 py-2 bg-white">
+            <option value="Trip">✈️ ทริปเที่ยวกับเพื่อน (Trip Planner)</option>
+            <option value="Sport">🏸 ตีแบด / กีฬา / บอร์ดเกม (Matchmaking)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อทริป / ชื่อตี้ *</label>
+          <input type="text" id="evTitle" placeholder="เช่น ตีแบดก๊วนวันศุกร์ หรือ ทริปเขาใหญ่" class="w-full border rounded-xl px-3 py-2">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">วันและเวลา</label>
+            <input type="datetime-local" id="evDateTime" class="w-full border rounded-xl px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">สถานที่ / สนาม</label>
+            <input type="text" id="evLocation" placeholder="เช่น คอร์ทแบด SB" class="w-full border rounded-xl px-3 py-2">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">รับจำนวนสูงสุด (คน)</label>
+            <input type="number" id="evMaxPeople" value="8" class="w-full border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">ระดับฝีมือ / หมายเหตุ</label>
+            <input type="text" id="evSkill" placeholder="เช่น มือเบา-กลาง, ชิลล์ๆ" class="w-full border rounded-xl px-3 py-2">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">รายละเอียดเพิ่มเติม</label>
+          <textarea id="evDesc" rows="2" placeholder="ระบุกฎกติกา ค่าสนามคร่าวๆ หรือจุดนัดพบ" class="w-full border rounded-xl px-3 py-2"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal('createEventModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
+        <button onclick="submitNewEvent()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">สร้างห้องเลย</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: เพิ่มสถานที่ในตาราง & แนบไฟล์ตั๋ว -->
+  <div id="itineraryModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
+      <h3 class="font-bold text-base mb-3">เพิ่มจุดหมาย / โหวต / แนบใบจอง</h3>
+      <div class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">วันที่ (Day)</label>
+            <input type="number" id="itDay" value="1" min="1" class="w-full border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">เวลา</label>
+            <input type="time" id="itTime" value="10:00" class="w-full border rounded-xl px-3 py-2">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อสถานที่ / ร้านอาหาร / ที่พัก *</label>
+          <input type="text" id="itPlace" placeholder="เช่น ร้านกาแฟบนดอย หรือ ตั๋วเครื่องบินขาไป" class="w-full border rounded-xl px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">โน้ตเพิ่มเติม</label>
+          <input type="text" id="itNotes" placeholder="เช่น รอโหวตจากเพื่อนๆ ก่อนจอง" class="w-full border rounded-xl px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">แนบไฟล์ตั๋ว / ใบจองที่พัก (รูปภาพหรือ PDF)</label>
+          <input type="file" id="itFile" accept="image/*,.pdf" class="w-full text-xs border rounded-xl p-2">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal('itineraryModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
+        <button onclick="submitItinerary()" class="bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: เพิ่มบิลหารเงิน (2 รูปแบบ: หารเท่า vs แยกรายการ) -->
+  <div id="expenseModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl my-8">
+      <h3 class="font-bold text-base mb-3">เพิ่มบิลค่าใช้จ่าย</h3>
+      
+      <div class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อบิล *</label>
+            <input type="text" id="exTitle" placeholder="เช่น ค่าสนามแบด, ค่าหมูกระทะ" class="w-full border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">คนที่จ่ายสำรองไปก่อน *</label>
+            <select id="exPaidBy" class="w-full border rounded-xl px-3 py-2 bg-white"></select>
+          </div>
+        </div>
+
+        <!-- เลือกรูปแบบการหาร 2 แบบ -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">เลือกรูปแบบการหารเงิน</label>
+          <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+            <button type="button" onclick="toggleSplitMode('Equal')" id="mode-Equal" class="py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm">
+              ⚖️ แบบที่ 1: หารเท่ากัน
+            </button>
+            <button type="button" onclick="toggleSplitMode('Itemized')" id="mode-Itemized" class="py-2 text-xs font-semibold rounded-lg text-slate-600">
+              🧾 แบบที่ 2: แยกตามรายการ
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION A: หารเท่ากัน (Equal Split) -->
+        <div id="section-Equal" class="space-y-3 bg-slate-50 p-3.5 rounded-xl border">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">ยอดเงินรวมทั้งหมด (บาท) *</label>
+            <input type="number" id="exEqualAmount" placeholder="0.00" class="w-full border rounded-xl px-3 py-2 bg-white font-semibold text-blue-600">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="text-xs font-medium text-slate-600">เลือกคนที่จะร่วมหารบิลนี้:</label>
+              <button type="button" onclick="selectCheckedInOnly()" class="text-[11px] text-emerald-600 font-medium underline">เลือกเฉพาะคนเช็กชื่อแล้ว</button>
+            </div>
+            <div id="equalUsersCheckboxes" class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto"></div>
+          </div>
+        </div>
+
+        <!-- SECTION B: แยกตามรายการ (Itemized Split) -->
+        <div id="section-Itemized" class="space-y-3 bg-slate-50 p-3.5 rounded-xl border hidden">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-slate-700">รายการอาหาร / ค่าใช้จ่ายย่อย</span>
+            <button type="button" onclick="addItemizedRow()" class="bg-slate-800 text-white text-[11px] px-2.5 py-1 rounded-lg">+ เพิ่มรายการ</button>
+          </div>
+          <div id="itemizedRowsContainer" class="space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
+          <div class="flex justify-between items-center pt-2 border-t text-xs font-bold">
+            <span>ยอดรวมทุกรายการ:</span>
+            <span id="itemizedTotalDisplay" class="text-blue-600 text-base">0.00 บาท</span>
+          </div>
+        </div>
+
+        <!-- แนบสลิป/ใบเสร็จ -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">แนบรูปใบเสร็จ / สลิปโอนเงิน (ถ้ามี)</label>
+          <input type="file" id="exFile" accept="image/*" class="w-full text-xs border rounded-xl p-2">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal('expenseModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
+        <button onclick="submitExpense()" class="bg-blue-600 text-white text-xs font-semibold px-5 py-2 rounded-xl">บันทึกบิล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // 🔴 นำ Web App URL (/exec) จาก Google Apps Script มาวางแทนที่ตรงนี้ครับ
+    const API_URL = "https://script.google.com/macros/s/AKfycbyfj3A6l197lZtmiOiECLw69CA61fGFDhhCftP2hN4JZJHE0W73z4Nok8jHAtWzo5f3/exec";
+
+    // Global State
+    let appState = {
+      users: [],
+      events: [],
+      participants: [],
+      currentUserId: localStorage.getItem("gs_userId") || "",
+      currentEventId: "",
+      currentEventData: null,
+      splitMode: "Equal",
+      itemizedCounter: 0
+    };
+
+    // เริ่มต้นโหลดข้อมูลเมื่อเปิดหน้าเว็บ
+    window.onload = () => {
+      if (API_URL.includes("วาง_WEB_APP_URL")) {
+        alert("⚠️ กรุณาใส่ Web App URL ในไฟล์ index.html บรรทัด API_URL ก่อนใช้งานครับ");
+        return;
+      }
+      loadHomeData();
+    };
+
+    function showLoading(show) {
+      document.getElementById("loading").classList.toggle("hidden", !show);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+    // ==========================================
+    // 1. API COMMUNICATION (GET & POST)
+    // ==========================================
+    async function apiGet(params) {
+      showLoading(true);
+      try {
+        const query = new URLSearchParams(params).toString();
+        const res = await fetch(`${API_URL}?${query}`);
+        const json = await res.json();
+        if (json.status !== "success") throw new Error(json.message);
+        return json.data;
+      } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function apiPost(payload) {
+      showLoading(true);
+      try {
+        // ใช้ text/plain เพื่อหลีกเลี่ยง CORS Preflight ของ Google Apps Script
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.status !== "success") throw new Error(json.message);
+        return json.data;
+      } catch (err) {
+        alert("บันทึกไม่สำเร็จ: " + err.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ==========================================
+    // 2. HOME VIEW & USER MANAGEMENT
+    // ==========================================
+    async function loadHomeData() {
+      const data = await apiGet({ action: "getAll" });
+      if (!data) return;
+      appState.users = data.users;
+      appState.events = data.events;
+      appState.participants = data.participants;
+
+      renderUserDropdown();
+      renderEventsList("All");
+    }
+
+    function renderUserDropdown() {
+      const select = document.getElementById("currentUserSelect");
+      select.innerHTML = appState.users.map(u => `<option value="${u.User_ID}">${u.Name}</option>`).join("");
+      
+      if (!appState.currentUserId && appState.users.length > 0) {
+        appState.currentUserId = appState.users[0].User_ID;
+      }
+      select.value = appState.currentUserId;
+    }
+
+    function changeCurrentUser() {
+      appState.currentUserId = document.getElementById("currentUserSelect").value;
+      localStorage.setItem("gs_userId", appState.currentUserId);
+      if (appState.currentEventId) openEventDetail(appState.currentEventId);
+    }
+
+    async function submitNewUser() {
+      const name = document.getElementById("newUserName").value.trim();
+      const promptPay = document.getElementById("newUserPromptPay").value.trim();
+      if (!name) return alert("กรุณากรอกชื่อ");
+
+      await apiPost({ action: "createUser", name, promptPay });
+      closeModal("userModal");
+      document.getElementById("newUserName").value = "";
+      document.getElementById("newUserPromptPay").value = "";
+      loadHomeData();
+    }
+
+    function filterEvents(type) {
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.className = "filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium";
+      });
+      document.getElementById(`filter-${type}`).className = "filter-btn bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded-full font-medium";
+      renderEventsList(type);
+    }
+
+    function renderEventsList(filterType) {
+      const container = document.getElementById("eventsList");
+      const filtered = filterType === "All" ? appState.events : appState.events.filter(e => e.Type === filterType);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm bg-white rounded-2xl border">ยังไม่มีกิจกรรมในหมวดนี้ กด "+ สร้างห้องใหม่" ได้เลย!</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.slice().reverse().map(ev => {
+        const joined = appState.participants.filter(p => p.Event_ID === ev.Event_ID && p.Status === "Joined").length;
+        const isTrip = ev.Type === "Trip";
+        return `
+          <div onclick="openEventDetail('${ev.Event_ID}')" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-300 cursor-pointer transition">
+            <div class="flex justify-between items-start">
+              <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${isTrip ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}">
+                ${isTrip ? '✈️ ทริปเที่ยว' : '🏸 กีฬา/กิจกรรม'}
+              </span>
+              <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                👥 ${joined}/${ev.Max_People} คน
+              </span>
+            </div>
+            <h3 class="font-bold text-base text-slate-900 mt-2">${ev.Title}</h3>
+            <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">${ev.Description || '-'}</p>
+            <div class="flex items-center gap-4 mt-3 pt-2.5 border-t text-[11px] text-slate-500">
+              <span>📍 ${ev.Location || '-'}</span>
+              <span>🕒 ${ev.Date_Time || '-'}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function submitNewEvent() {
+      const title = document.getElementById("evTitle").value.trim();
+      if (!title) return alert("กรุณาใส่ชื่อกิจกรรม");
+
+      await apiPost({
+        action: "createEvent",
+        type: document.getElementById("evType").value,
+        title: title,
+        dateTime: document.getElementById("evDateTime").value.replace("T", " "),
+        location: document.getElementById("evLocation").value,
+        maxPeople: document.getElementById("evMaxPeople").value,
+        skillLevel: document.getElementById("evSkill").value,
+        description: document.getElementById("evDesc").value,
+        hostId: appState.currentUserId
+      });
+      closeModal("createEventModal");
+      loadHomeData();
+    }
+
+    // ==========================================
+    // 3. EVENT DETAIL VIEW (ITINERARY, MEMBERS, EXPENSE)
+    // ==========================================
+    function showHome() {
+      appState.currentEventId = "";
+      document.getElementById("detailView").classList.add("hidden");
+      document.getElementById("homeView").classList.remove("hidden");
+      loadHomeData();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+      document.getElementById(tabId).classList.remove("hidden");
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.className = "tab-btn text-slate-600 py-2 rounded-lg";
+      });
+      document.getElementById(`btn-${tabId}`).className = "tab-btn bg-white text-slate-900 py-2 rounded-lg shadow-sm";
+    }
+
+    async function openEventDetail(eventId) {
+      appState.currentEventId = eventId;
+      const data = await apiGet({ action: "getEventDetail", eventId });
+      if (!data) return;
+      appState.currentEventData = data;
+
+      document.getElementById("homeView").classList.add("hidden");
+      document.getElementById("detailView").classList.remove("hidden");
+
+      // Header Info
+      const ev = data.event;
+      const joinedCount = data.participants.filter(p => p.Status === "Joined").length;
+      document.getElementById("detBadge").innerText = ev.Type === "Trip" ? "✈️ ทริปเที่ยว" : "🏸 ตี้กีฬา/กิจกรรม";
+      document.getElementById("detTitle").innerText = ev.Title;
+      document.getElementById("detDesc").innerText = ev.Description || "";
+      document.getElementById("detLocation").innerText = ev.Location || "-";
+      document.getElementById("detDateTime").innerText = ev.Date_Time || "-";
+      document.getElementById("detCapacity").innerText = `${joinedCount}/${ev.Max_People} คน`;
+      document.getElementById("detSkill").innerText = ev.Skill_Level || "ทุกระดับ";
+
+      // ซ่อนปุ่มเข้าร่วมถ้าผู้ใช้อยู่ในห้องแล้ว
+      const isJoined = data.participants.some(p => p.User_ID === appState.currentUserId);
+      document.getElementById("btnJoinEvent").classList.toggle("hidden", isJoined);
+
+      renderItinerary(data.itinerary);
+      renderParticipants(data.participants, data.users);
+      renderExpensesAndSettlement(data);
+    }
+
+    async function joinCurrentEvent() {
+      const res = await apiPost({
+        action: "joinEvent",
+        eventId: appState.currentEventId,
+        userId: appState.currentUserId
+      });
+      if (res) {
+        alert(res.joinStatus === "Joined" ? "✅ เข้าร่วมสำเร็จ (ตัวจริง)" : "⏳ ห้องเต็มแล้ว คุณอยู่ในคิวตัวสำรอง (Waitlist)");
+        openEventDetail(appState.currentEventId);
+      }
+    }
+
+    // --- Tab 1: Itinerary & Polls ---
+    function renderItinerary(items) {
+      const container = document.getElementById("itineraryList");
+      if (items.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 bg-white rounded-2xl border text-xs text-slate-400">ยังไม่มีแผนเดินทาง หรือสถานที่ให้โหวต</div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(it => {
+        const votes = JSON.parse(it.Vote_Users_JSON || "[]");
+        const hasVoted = votes.includes(appState.currentUserId);
+        return `
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="bg-slate-100 text-slate-700 text-[11px] font-bold px-2 py-0.5 rounded">Day ${it.Day} • ${it.Time}</span>
+                ${it.Doc_URL ? `<a href="${it.Doc_URL}" target="_blank" class="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium hover:underline">📎 เปิดดูตั๋ว/ใบจอง</a>` : ''}
+              </div>
+              <h4 class="font-bold text-sm text-slate-900 mt-1">${it.Place_Name}</h4>
+              <p class="text-xs text-slate-500">${it.Notes || ''}</p>
+            </div>
+            <button onclick="votePlace('${it.Item_ID}')" class="shrink-0 px-3 py-2 rounded-xl border text-xs font-semibold transition ${hasVoted ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}">
+              👍 ${votes.length}
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function votePlace(itemId) {
+      await apiPost({ action: "voteItinerary", itemId, userId: appState.currentUserId });
+      openEventDetail(appState.currentEventId);
+    }
+
+    async function submitItinerary() {
+      const placeName = document.getElementById("itPlace").value.trim();
+      if (!placeName) return alert("กรุณาใส่ชื่อสถานที่");
+
+      const fileInput = document.getElementById("itFile");
+      let fileData = { base64: "", name: "", type: "" };
+      if (fileInput.files.length > 0) {
+        fileData = await readFileAsBase64(fileInput.files[0]);
+      }
+
+      await apiPost({
+        action: "addItinerary",
+        eventId: appState.currentEventId,
+        day: document.getElementById("itDay").value,
+        time: document.getElementById("itTime").value,
+        placeName: placeName,
+        notes: document.getElementById("itNotes").value,
+        userId: appState.currentUserId,
+        fileBase64: fileData.base64,
+        fileName: fileData.name,
+        mimeType: fileData.type
+      });
+
+      closeModal("itineraryModal");
+      document.getElementById("itPlace").value = "";
+      document.getElementById("itFile").value = "";
+      openEventDetail(appState.currentEventId);
+    }
+
+    // --- Tab 2: Members & Check-in ---
+    function renderParticipants(participants, users) {
+      const container = document.getElementById("participantsList");
+      container.innerHTML = participants.map(p => {
+        const user = users.find(u => u.User_ID === p.User_ID) || { Name: p.User_ID };
+        const isChecked = String(p.Checked_In).toUpperCase() === "TRUE";
+        return `
+          <div class="py-3 flex justify-between items-center">
+            <div>
+              <span class="font-semibold text-sm text-slate-800">${user.Name}</span>
+              <span class="text-[11px] ml-1.5 px-2 py-0.5 rounded-full ${p.Status === 'Joined' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}">
+                ${p.Status === 'Joined' ? 'ตัวจริง' : 'ตัวสำรอง'}
+              </span>
+            </div>
+            ${isChecked 
+              ? `<span class="text-xs font-semibold text-emerald-600">✅ เช็กชื่อแล้ว</span>`
+              : `<button onclick="checkInMember('${p.Participant_ID}')" class="bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg">กดเช็กชื่อ</button>`
+            }
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function checkInMember(participantId) {
+      await apiPost({ action: "checkIn", participantId });
+      openEventDetail(appState.currentEventId);
+    }
+
+    // ==========================================
+    // 4. EXPENSE SPLITTING (หาร 2 แบบ + สรุปยอดโอน)
+    // ==========================================
+    function renderExpensesAndSettlement(data) {
+      // 1. แสดงยอดสรุปโอนสุทธิ (Debt Simplification)
+      const setContainer = document.getElementById("settlementList");
+      const txs = data.settlement.transactions;
+      if (txs.length === 0) {
+        setContainer.innerHTML = `<p class="text-slate-300">ยังไม่มีรายการค้างชำระ หรือยอดเงินลงตัวแล้ว 🎉</p>`;
+      } else {
+        setContainer.innerHTML = txs.map(t => `
+          <div class="bg-white/10 rounded-xl p-3 flex justify-between items-center">
+            <div>
+              <span class="font-bold text-amber-300">${t.fromName}</span> 
+              <span class="text-slate-300 mx-1">โอนให้</span> 
+              <span class="font-bold text-emerald-300">${t.toName}</span>
+              ${t.toPromptPay ? `<div class="text-[11px] text-slate-300 mt-0.5">📱 พร้อมเพย์: <span class="underline select-all">${t.toPromptPay}</span></div>` : ''}
+            </div>
+            <div class="text-base font-bold text-white">${t.amount.toLocaleString()} ฿</div>
+          </div>
+        `).join("");
+      }
+
+      // 2. แสดงรายการบิลทั้งหมด
+      const expContainer = document.getElementById("expensesList");
+      if (data.expenses.length === 0) {
+        expContainer.innerHTML = `<div class="text-center py-8 bg-white rounded-2xl border text-xs text-slate-400">ยังไม่มีบิลค่าใช้จ่าย</div>`;
+        return;
+      }
+
+      expContainer.innerHTML = data.expenses.slice().reverse().map(exp => {
+        const payer = data.users.find(u => u.User_ID === exp.Paid_By) || { Name: exp.Paid_By };
+        const details = data.expenseDetails.filter(d => d.Expense_ID === exp.Expense_ID);
+        const isEqual = exp.Split_Type === "Equal";
+
+        const detailsHtml = details.map(d => {
+          const uIds = JSON.parse(d.Assigned_Users_JSON || "[]");
+          const names = uIds.map(id => (data.users.find(u => u.User_ID === id) || { Name: id }).Name).join(", ");
+          return `<div class="text-[11px] text-slate-500 mt-1">• ${d.Item_Name} (${Number(d.Amount).toLocaleString()}฿) → <span class="text-slate-700 font-medium">${names}</span></div>`;
+        }).join("");
+
+        return `
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${isEqual ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}">
+                  ${isEqual ? '⚖️ หารเท่ากัน' : '🧾 แยกตามรายการ'}
+                </span>
+                <h4 class="font-bold text-sm text-slate-900 mt-1">${exp.Title}</h4>
+                <p class="text-xs text-slate-500">สำรองจ่ายโดย: <span class="font-semibold text-slate-700">${payer.Name}</span></p>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-base text-slate-900">${Number(exp.Total_Amount).toLocaleString()} ฿</div>
+                ${exp.Receipt_URL ? `<a href="${exp.Receipt_URL}" target="_blank" class="text-[11px] text-blue-600 underline">ดูสลิป</a>` : ''}
+              </div>
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100">${detailsHtml}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // เปิด Modal เพิ่มบิล และสร้าง Checkbox รายชื่อคนในห้อง
+    function openExpenseModal() {
+      const data = appState.currentEventData;
+      const members = data.participants.map(p => {
+        const u = data.users.find(x => x.User_ID === p.User_ID) || { User_ID: p.User_ID, Name: p.User_ID };
+        return { ...u, checkedIn: String(p.Checked_In).toUpperCase() === "TRUE" };
+      });
+
+      // Dropdown คนจ่ายสำรอง
+      document.getElementById("exPaidBy").innerHTML = members.map(m => 
+        `<option value="${m.User_ID}" ${m.User_ID === appState.currentUserId ? 'selected' : ''}>${m.Name}</option>`
+      ).join("");
+
+      // Checkboxes สำหรับโหมดหารเท่า
+      document.getElementById("equalUsersCheckboxes").innerHTML = members.map(m => `
+        <label class="flex items-center gap-2 bg-white p-2 rounded-lg border text-xs cursor-pointer">
+          <input type="checkbox" class="eq-user-cb" value="${m.User_ID}" data-checkedin="${m.checkedIn}" checked>
+          <span>${m.Name}</span>
+        </label>
+      `).join("");
+
+      // รีเซ็ตโหมดแยกรายการ
+      document.getElementById("itemizedRowsContainer").innerHTML = "";
+      appState.itemizedCounter = 0;
+      addItemizedRow();
+
+      toggleSplitMode("Equal");
+      openModal("expenseModal");
+    }
+
+    function toggleSplitMode(mode) {
+      appState.splitMode = mode;
+      document.getElementById("section-Equal").classList.toggle("hidden", mode !== "Equal");
+      document.getElementById("section-Itemized").classList.toggle("hidden", mode !== "Itemized");
+
+      document.getElementById("mode-Equal").className = mode === "Equal" 
+        ? "py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm" 
+        : "py-2 text-xs font-semibold rounded-lg text-slate-600";
+      document.getElementById("mode-Itemized").className = mode === "Itemized" 
+        ? "py-2 text-xs font-semibold rounded-lg bg-white text-purple-600 shadow-sm" 
+        : "py-2 text-xs font-semibold rounded-lg text-slate-600";
+    }
+
+    function selectCheckedInOnly() {
+      document.querySelectorAll(".eq-user-cb").forEach(cb => {
+        cb.checked = cb.dataset.checkedin === "true";
+      });
+    }
+
+    // เพิ่มแถวรายการย่อย (สำหรับโหมดแยกตามรายการ)
+    function addItemizedRow() {
+      const idx = ++appState.itemizedCounter;
+      const data = appState.currentEventData;
+      const members = data.participants.map(p => data.users.find(x => x.User_ID === p.User_ID) || { User_ID: p.User_ID, Name: p.User_ID });
+
+      const userTags = members.map(m => `
+        <label class="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded text-[11px] cursor-pointer">
+          <input type="checkbox" class="item-user-cb-${idx}" value="${m.User_ID}" checked>
+          <span>${m.Name}</span>
+        </label>
+      `).join("");
+
+      const html = `
+        <div id="item-row-${idx}" class="bg-white p-3 rounded-xl border space-y-2">
+          <div class="flex gap-2">
+            <input type="text" placeholder="ชื่อรายการ (เช่น ส้มตำ, น้ำแข็ง)" class="item-name-${idx} flex-1 border rounded-lg px-2.5 py-1.5 text-xs">
+            <input type="number" oninput="calcItemizedTotal()" placeholder="ราคา" class="item-amt-${idx} w-24 border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-right">
+            <button type="button" onclick="document.getElementById('item-row-${idx}').remove(); calcItemizedTotal();" class="text-red-500 text-xs px-1">✕</button>
+          </div>
+          <div class="flex flex-wrap gap-1">${userTags}</div>
+        </div>
+      `;
+      document.getElementById("itemizedRowsContainer").insertAdjacentHTML("beforeend", html);
+    }
+
+    function calcItemizedTotal() {
+      let sum = 0;
+      for (let i = 1; i <= appState.itemizedCounter; i++) {
+        const el = document.querySelector(`.item-amt-${i}`);
+        if (el) sum += Number(el.value || 0);
+      }
+      document.getElementById("itemizedTotalDisplay").innerText = `${sum.toLocaleString()} บาท`;
+      return sum;
+    }
+
+    async function submitExpense() {
+      const title = document.getElementById("exTitle").value.trim();
+      if (!title) return alert("กรุณาใส่ชื่อบิล");
+
+      const paidBy = document.getElementById("exPaidBy").value;
+      const fileInput = document.getElementById("exFile");
+      let fileData = { base64: "", name: "", type: "" };
+      if (fileInput.files.length > 0) {
+        fileData = await readFileAsBase64(fileInput.files[0]);
+      }
+
+      let payload = {
+        action: "addExpense",
+        eventId: appState.currentEventId,
+        title: title,
+        paidBy: paidBy,
+        splitType: appState.splitMode,
+        fileBase64: fileData.base64,
+        fileName: fileData.name,
+        mimeType: fileData.type
+      };
+
+      if (appState.splitMode === "Equal") {
+        const amount = Number(document.getElementById("exEqualAmount").value);
+        const assignedUsers = Array.from(document.querySelectorAll(".eq-user-cb:checked")).map(cb => cb.value);
+        if (amount <= 0 || assignedUsers.length === 0) return alert("กรุณากรอกยอดเงินและเลือกผู้ร่วมหารอย่างน้อย 1 คน");
+
+        payload.totalAmount = amount;
+        payload.assignedUsers = assignedUsers;
+      } else {
+        let items = [];
+        let total = 0;
+        for (let i = 1; i <= appState.itemizedCounter; i++) {
+          const nameEl = document.querySelector(`.item-name-${i}`);
+          const amtEl = document.querySelector(`.item-amt-${i}`);
+          if (!nameEl || !amtEl) continue;
+
+          const itemName = nameEl.value.trim() || `รายการที่ ${i}`;
+          const itemAmt = Number(amtEl.value || 0);
+          const users = Array.from(document.querySelectorAll(`.item-user-cb-${i}:checked`)).map(cb => cb.value);
+
+          if (itemAmt > 0 && users.length > 0) {
+            items.push({ name: itemName, amount: itemAmt, assignedUsers: users });
+            total += itemAmt;
+          }
+        }
+        if (items.length === 0) return alert("กรุณากรอกรายการและราคาอย่างน้อย 1 รายการ");
+
+        payload.totalAmount = total;
+        payload.items = items;
+      }
+
+      await apiPost(payload);
+      closeModal("expenseModal");
+      document.getElementById("exTitle").value = "";
+      document.getElementById("exEqualAmount").value = "";
+      document.getElementById("exFile").value = "";
+      openEventDetail(appState.currentEventId);
+    }
+
+    // แปลงไฟล์เป็น Base64 สำหรับอัปโหลดลง Google Drive
+    function readFileAsBase64(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ base64: reader.result, name: file.name, type: file.type });
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
 </body>
 </html>
-
