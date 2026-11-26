@@ -3,478 +3,534 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GroupSync - จัดทริป ตี้กีฬา & หารเงินอัจฉริยะ</title>
+  <title>GroupSync Enterprise - Community, Provider & Admin Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+    body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
     .loader { border-top-color: #2563eb; animation: spinner 0.8s linear infinite; }
     @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="text-slate-800 pb-20">
+<body class="text-slate-800">
 
   <!-- Loading Overlay -->
-  <div id="loading" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
-    <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-3"></div>
-    <p class="text-white font-medium text-sm">กำลังซิงค์ข้อมูลกับ Google Sheets...</p>
+  <div id="loading" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
+    <div class="loader rounded-full border-4 border-t-4 border-slate-200 h-11 w-11 mb-3"></div>
+    <p class="text-white text-sm font-medium">กำลังซิงค์ข้อมูลกับ Google Apps Script...</p>
   </div>
 
-  <!-- Top Navbar -->
-  <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center gap-2 cursor-pointer" onclick="showHome()">
-        <span class="bg-blue-600 text-white p-1.5 rounded-lg font-bold text-sm">GS</span>
-        <h1 class="font-bold text-lg tracking-wide">GroupSync</h1>
+  <!-- ==================== SCREEN 1: LOGIN SCREEN (เด้งตั้งแต่เปิดเว็บ) ==================== -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950">
+    <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white font-bold text-2xl shadow-lg mb-3">GS</div>
+        <h1 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบ GroupSync</h1>
+        <p class="text-xs text-slate-500 mt-1">ระบบบริหารจัดการกลุ่ม กิจกรรม และหารค่าใช้จ่ายครบวงจร</p>
       </div>
-      
-      <!-- User Selector -->
-      <div class="flex items-center gap-2">
-        <select id="currentUserSelect" onchange="changeCurrentUser()" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none">
-          <option value="">โหลดผู้ใช้...</option>
-        </select>
-        <button onclick="openModal('userModal')" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1.5 rounded-lg font-medium">+ สมาชิก</button>
-      </div>
-    </div>
-  </header>
 
-  <!-- Main Container -->
-  <main class="max-w-3xl mx-auto px-4 pt-5">
-
-    <!-- ==================== VIEW 1: HOME (รายการทริป & ตี้กีฬา) ==================== -->
-    <div id="homeView">
-      <div class="flex justify-between items-center mb-4">
+      <!-- Login Form -->
+      <div class="space-y-3.5 text-sm">
         <div>
-          <h2 class="text-xl font-bold text-slate-900">กิจกรรมทั้งหมด</h2>
-          <p class="text-xs text-slate-500">เลือกทริปเที่ยว หรือห้องเล่นกีฬาเพื่อจัดการข้อมูล</p>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+          <input type="text" id="loginUsername" placeholder="กรอก username" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-600">
         </div>
-        <button onclick="openModal('createEventModal')" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-sm transition">
-          + สร้างห้องใหม่
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่าน (Password)</label>
+          <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-600">
+        </div>
+        <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md transition">
+          เข้าสู่ระบบ
         </button>
       </div>
 
-      <!-- Filter Tabs -->
-      <div class="flex gap-2 mb-4">
-        <button onclick="filterEvents('All')" id="filter-All" class="filter-btn bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded-full font-medium">ทั้งหมด</button>
-        <button onclick="filterEvents('Trip')" id="filter-Trip" class="filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium">✈️ ทริปเที่ยว</button>
-        <button onclick="filterEvents('Sport')" id="filter-Sport" class="filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium">🏸 ตี้กีฬา/กิจกรรม</button>
-      </div>
-
-      <!-- Events List -->
-      <div id="eventsList" class="grid gap-3"></div>
-    </div>
-
-    <!-- ==================== VIEW 2: EVENT DETAIL (หน้ารายละเอียด) ==================== -->
-    <div id="detailView" class="hidden">
-      <button onclick="showHome()" class="text-xs text-blue-600 font-medium mb-3 inline-flex items-center gap-1 hover:underline">
-        ← กลับหน้าหลัก
-      </button>
-
-      <!-- Event Header Card -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-4">
-        <div class="flex justify-between items-start gap-2">
-          <div>
-            <span id="detBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Trip</span>
-            <h2 id="detTitle" class="text-xl font-bold text-slate-900 mt-1">ชื่อทริป</h2>
-            <p id="detDesc" class="text-xs text-slate-500 mt-1">รายละเอียด</p>
-          </div>
-          <button id="btnJoinEvent" onclick="joinCurrentEvent()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm shrink-0">
-            + เข้าร่วม
+      <!-- Quick Demo Login Buttons (แบ่งสิทธิ์ชัดเจน 3 Roles) -->
+      <div class="mt-6 pt-5 border-t border-slate-100">
+        <p class="text-[11px] font-semibold text-slate-400 text-center uppercase tracking-wider mb-3">ทดลองเข้าสู่ระบบด่วนตามสิทธิ์ (Role-Based Access)</p>
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <button onclick="quickLogin('user1', '123')" class="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-center transition">
+            👤 User<br><span class="text-[10px] font-normal">ผู้ใช้ทั่วไป</span>
+          </button>
+          <button onclick="quickLogin('provider', '123')" class="p-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-center transition">
+            🏟️ Provider<br><span class="text-[10px] font-normal">ร้านค้า/สนาม</span>
+          </button>
+          <button onclick="quickLogin('admin', '123')" class="p-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 font-semibold text-center transition">
+            🛡️ Admin<br><span class="text-[10px] font-normal">ผู้ดูแลระบบ</span>
           </button>
         </div>
-        <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t text-xs text-slate-600">
-          <div>📍 <span id="detLocation">-</span></div>
-          <div>🕒 <span id="detDateTime">-</span></div>
-          <div>👥 รับจำนวน: <span id="detCapacity" class="font-semibold">0/0</span></div>
-          <div>🏆 ระดับ: <span id="detSkill">-</span></div>
-        </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Navigation Tabs inside Event -->
-      <div class="grid grid-cols-3 bg-slate-200/70 p-1 rounded-xl mb-4 text-xs font-semibold">
-        <button onclick="switchTab('tab-plan')" id="btn-tab-plan" class="tab-btn bg-white text-slate-900 py-2 rounded-lg shadow-sm">
-          🗺️ แผน & โหวต
-        </button>
-        <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn text-slate-600 py-2 rounded-lg">
-          ✅ สมาชิก & เช็กชื่อ
-        </button>
-        <button onclick="switchTab('tab-expense')" id="btn-tab-expense" class="tab-btn text-slate-600 py-2 rounded-lg">
-          💸 หารค่าใช้จ่าย
-        </button>
-      </div>
-
-      <!-- TAB 1: ITINERARY & POLLS -->
-      <div id="tab-plan" class="tab-content">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="font-bold text-sm text-slate-800">ตารางกิจกรรม / โหวตสถานที่ & ตั๋ว</h3>
-          <button onclick="openModal('itineraryModal')" class="bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg">+ เพิ่มสถานที่/แนบตั๋ว</button>
-        </div>
-        <div id="itineraryList" class="space-y-2.5"></div>
-      </div>
-
-      <!-- TAB 2: PARTICIPANTS & CHECK-IN -->
-      <div id="tab-members" class="tab-content hidden">
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <h3 class="font-bold text-sm text-slate-800 mb-3">รายชื่อผู้เข้าร่วม (เช็กชื่อหน้างาน)</h3>
-          <div id="participantsList" class="divide-y"></div>
-        </div>
-      </div>
-
-      <!-- TAB 3: EXPENSE SPLITTING (หาร 2 แบบ + สรุปยอดโอน) -->
-      <div id="tab-expense" class="tab-content hidden space-y-4">
-        
-        <!-- Settlement Summary Card (สรุปยอดโอนสุทธิ) -->
-        <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-md">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="font-bold text-sm flex items-center gap-1.5">⚡ สรุปยอดโอนสุทธิ (หักลบหนี้แล้ว)</h3>
-            <span class="text-[11px] bg-white/10 px-2 py-0.5 rounded">โอนน้อยครั้งที่สุด</span>
+  <!-- ==================== SCREEN 2: MAIN APPLICATION ==================== -->
+  <div id="mainApp" class="hidden pb-20">
+    
+    <!-- Top Navbar -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <span class="bg-blue-600 text-white px-2.5 py-1 rounded-lg font-bold text-sm">GS</span>
+          <div>
+            <h1 class="font-bold text-base leading-tight">GroupSync</h1>
+            <span id="navRoleBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold">Role: User</span>
           </div>
-          <div id="settlementList" class="space-y-2 text-xs"></div>
         </div>
 
-        <!-- Expense Header & Add Button -->
+        <!-- Navigation Menu (แสดงตามสิทธิ์ RBAC) -->
+        <div class="flex items-center gap-2 text-xs">
+          <button onclick="switchMainPage('page-events')" id="menu-events" class="nav-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium">
+            📅 กิจกรรม & หารเงิน
+          </button>
+          <button onclick="switchMainPage('page-dashboard')" id="menu-dashboard" class="nav-btn bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-medium">
+            📊 Dashboard สรุปผล
+          </button>
+          <button onclick="switchMainPage('page-admin')" id="menu-admin" class="nav-btn bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium hidden">
+            🛡️ จัดการระบบ (Admin)
+          </button>
+
+          <!-- Notification Bell -->
+          <div class="relative">
+            <button onclick="toggleNotifDropdown()" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg relative">
+              🔔
+              <span id="notifCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+            </button>
+            <!-- Notification Dropdown -->
+            <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+              <div class="bg-slate-50 px-4 py-2.5 border-b font-bold text-xs flex justify-between">
+                <span>ประวัติการแจ้งเตือนสถานะ</span>
+                <span class="text-blue-600">Real-time</span>
+              </div>
+              <div id="notifList" class="max-h-72 overflow-y-auto divide-y text-xs"></div>
+            </div>
+          </div>
+
+          <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-2.5 py-1.5 rounded-lg font-medium ml-1">
+            ออก
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 pt-6">
+
+      <!-- ==================== PAGE A: DASHBOARD สรุปผล & กราฟ ==================== -->
+      <div id="page-dashboard" class="main-page hidden space-y-6">
         <div class="flex justify-between items-center">
           <div>
-            <h3 class="font-bold text-sm text-slate-800">รายการบิลค่าใช้จ่าย</h3>
-            <p class="text-[11px] text-slate-500">รองรับทั้งแบบหารเท่า และแยกตามรายการ</p>
+            <h2 class="text-xl font-bold text-slate-900">📊 Dashboard สรุปผลภาพรวม</h2>
+            <p class="text-xs text-slate-500">วิเคราะห์ยอดการใช้งานรายเดือน หมวดหมู่ยอดนิยม และสถิติการเงิน</p>
           </div>
-          <button onclick="openExpenseModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm">
-            + เพิ่มบิลหารเงิน
+          <span class="text-xs bg-white border px-3 py-1.5 rounded-xl font-medium text-slate-600">อัปเดตล่าสุด: วันนี้</span>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-xs text-slate-500">กิจกรรมทั้งหมด</p>
+            <h3 id="kpiTotalEvents" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+            <span class="text-[11px] text-emerald-600 font-medium">+100% ระบบพร้อมใช้</span>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-xs text-slate-500">ยอดเงินหมุนเวียนหารบิล</p>
+            <h3 id="kpiTotalMoney" class="text-2xl font-bold text-blue-600 mt-1">0 ฿</h3>
+            <span class="text-[11px] text-slate-400">รวมทุกทริปและตี้กีฬา</span>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-xs text-slate-500">ผู้ใช้งานในระบบ</p>
+            <h3 id="kpiTotalUsers" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+            <span class="text-[11px] text-purple-600 font-medium">User / Provider / Admin</span>
+          </div>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-xs text-slate-500">งานที่เสร็จสมบูรณ์</p>
+            <h3 id="kpiCompleted" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+            <span class="text-[11px] text-slate-400">สถานะ Completed</span>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <h4 class="font-bold text-sm text-slate-800 mb-3">ยอดการใช้งานและค่าใช้จ่ายรายเดือน (บาท)</h4>
+            <canvas id="monthlyChart" height="140"></canvas>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <h4 class="font-bold text-sm text-slate-800 mb-3">สัดส่วนหมวดหมู่ยอดนิยม</h4>
+            <canvas id="categoryChart" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Status History Table -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <h4 class="font-bold text-sm text-slate-800 mb-3">ประวัติการเปลี่ยนสถานะและกิจกรรมย้อนหลัง</h4>
+          <div id="dashboardLogs" class="divide-y text-xs"></div>
+        </div>
+      </div>
+
+      <!-- ==================== PAGE B: ADMIN PANEL (เฉพาะ Admin) ==================== -->
+      <div id="page-admin" class="main-page hidden space-y-6">
+        <div class="bg-purple-900 text-white p-6 rounded-2xl shadow-md flex justify-between items-center">
+          <div>
+            <span class="text-xs bg-purple-700 px-2.5 py-1 rounded-full font-semibold">Admin Control Center</span>
+            <h2 class="text-xl font-bold mt-2">จัดการสิทธิ์ผู้ใช้งาน & การแจ้งเตือน</h2>
+            <p class="text-xs text-purple-200 mt-0.5">ควบคุม Role-Based Access Control และตั้งค่า Webhook แจ้งเตือนอัตโนมัติ</p>
+          </div>
+          <button onclick="resetDemo()" class="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">
+            รีเซ็ตข้อมูลเริ่มต้น
           </button>
         </div>
 
-        <!-- Expenses List -->
-        <div id="expensesList" class="space-y-2.5"></div>
-      </div>
-    </div>
+        <!-- Role Management Table -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <h3 class="font-bold text-sm text-slate-800 mb-3">จัดการสิทธิ์ผู้ใช้งาน (Role-Based Access Control)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 border-b">
+                <tr>
+                  <th class="p-3">ชื่อผู้ใช้</th>
+                  <th class="p-3">Username</th>
+                  <th class="p-3">พร้อมเพย์</th>
+                  <th class="p-3">สิทธิ์ปัจจุบัน (Role)</th>
+                  <th class="p-3">เปลี่ยนสิทธิ์</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTable" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
 
-  </main>
+        <!-- Push Notification / Webhook Settings -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <h3 class="font-bold text-sm text-slate-800 mb-1">ตั้งค่าการแจ้งเตือนอัตโนมัติ (Notification Webhook)</h3>
+          <p class="text-xs text-slate-500 mb-3">วางลิงก์ Webhook (เช่น Discord, Telegram หรือ LINE Messaging Proxy) เพื่อส่งแจ้งเตือนทุกครั้งที่สถานะเปลี่ยน</p>
+          <div class="flex gap-2">
+            <input type="text" id="adminWebhookInput" placeholder="https://discord.com/api/webhooks/..." class="flex-1 border rounded-xl px-3.5 py-2 text-xs">
+            <button onclick="saveWebhookUrl()" class="bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึกการตั้งค่า</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PAGE C: EVENTS & EXPENSE SPLITTING ==================== -->
+      <div id="page-events" class="main-page">
+        
+        <!-- Sub-view 1: รายการทริป & ตี้กีฬา -->
+        <div id="eventsListView">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900">ทริปเที่ยว & ตี้กีฬา</h2>
+              <p id="roleWelcomeText" class="text-xs text-slate-500">ยินดีต้อนรับ</p>
+            </div>
+            <button onclick="openModal('createEventModal')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm">
+              + สร้างทริป / เปิดตี้ใหม่
+            </button>
+          </div>
+
+          <div id="eventsGrid" class="grid md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Sub-view 2: รายละเอียดทริป + Status Pipeline + หารเงิน 2 รูปแบบ -->
+        <div id="eventDetailView" class="hidden space-y-4">
+          <button onclick="closeEventDetail()" class="text-xs text-blue-600 font-semibold hover:underline">← กลับหน้ารายการทั้งหมด</button>
+
+          <!-- STATUS PIPELINE BAR (ลำดับขั้นตอนชัดเจน + ปุ่มเปลี่ยนสถานะ) -->
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+              <div>
+                <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Status Pipeline & Notification</span>
+                <h3 id="detTitle" class="text-lg font-bold text-slate-900">ชื่อกิจกรรม</h3>
+              </div>
+              <div id="statusActionArea" class="flex items-center gap-2"></div>
+            </div>
+
+            <!-- 4 Steps Visual Pipeline -->
+            <div class="grid grid-cols-4 gap-2 text-center text-[11px]">
+              <div id="step-Open" class="p-2 rounded-xl border font-semibold">1. Open<br><span class="font-normal text-[10px]">เปิดรับสมาชิก</span></div>
+              <div id="step-Confirmed" class="p-2 rounded-xl border font-semibold">2. Confirmed<br><span class="font-normal text-[10px]">ยืนยันจองสนาม/ทริป</span></div>
+              <div id="step-InProgress" class="p-2 rounded-xl border font-semibold">3. In Progress<br><span class="font-normal text-[10px]">เช็กชื่อ/เริ่มกิจกรรม</span></div>
+              <div id="step-Completed" class="p-2 rounded-xl border font-semibold">4. Completed<br><span class="font-normal text-[10px]">จบงาน/เคลียร์เงิน</span></div>
+            </div>
+          </div>
+
+          <!-- 2 Columns: ซ้าย (สมาชิก & โหวตแผน) / ขวา (ระบบหารเงิน 2 แบบ) -->
+          <div class="grid md:grid-cols-2 gap-4">
+            
+            <!-- Left Column: สมาชิกเช็กชื่อ + แผนเดินทาง -->
+            <div class="space-y-4">
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-3">
+                  <h4 class="font-bold text-sm">👥 สมาชิก & เช็กชื่อหน้างาน</h4>
+                  <button id="btnJoin" onclick="joinEvent()" class="bg-emerald-600 text-white text-xs px-3 py-1 rounded-lg font-medium">+ เข้าร่วม</button>
+                </div>
+                <div id="detMembersList" class="divide-y text-xs"></div>
+              </div>
+
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-3">
+                  <h4 class="font-bold text-sm">🗺️ แผนกิจกรรม & โหวตสถานที่</h4>
+                  <button onclick="openModal('itineraryModal')" class="bg-slate-900 text-white text-xs px-3 py-1 rounded-lg">+ เพิ่มสถานที่</button>
+                </div>
+                <div id="detItineraryList" class="space-y-2 text-xs"></div>
+              </div>
+            </div>
+
+            <!-- Right Column: ระบบหารเงิน 2 รูปแบบ + สรุปยอดโอน -->
+            <div class="space-y-4">
+              <!-- สรุปยอดโอนสุทธิ -->
+              <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-md">
+                <h4 class="font-bold text-sm mb-2.5">⚡ สรุปยอดโอนสุทธิ (ใครโอนให้ใคร)</h4>
+                <div id="detSettlementList" class="space-y-2 text-xs"></div>
+              </div>
+
+              <!-- บิลค่าใช้จ่าย (หารเท่า / แยกรายการ) -->
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-3">
+                  <div>
+                    <h4 class="font-bold text-sm">💸 รายการบิลหารเงิน</h4>
+                    <p class="text-[11px] text-slate-400">แบบหารเท่ากัน และ แบบแยกตามรายการ</p>
+                  </div>
+                  <button onclick="openExpenseModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">+ เพิ่มบิล</button>
+                </div>
+                <div id="detExpensesList" class="space-y-2.5 text-xs"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
 
   <!-- ==================== MODALS ==================== -->
 
-  <!-- Modal 1: สร้างสมาชิกใหม่ -->
-  <div id="userModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
-      <h3 class="font-bold text-base mb-3">เพิ่มสมาชิกใหม่</h3>
-      <div class="space-y-3 text-sm">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อเล่น / ชื่อแสดงในระบบ *</label>
-          <input type="text" id="newUserName" placeholder="เช่น นนท์, แพรว" class="w-full border rounded-xl px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">เบอร์พร้อมเพย์ / เลขบัตร (สำหรับรับเงินโอน)</label>
-          <input type="text" id="newUserPromptPay" placeholder="เช่น 0812345678" class="w-full border rounded-xl px-3 py-2">
-        </div>
-      </div>
-      <div class="flex justify-end gap-2 mt-5">
-        <button onclick="closeModal('userModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
-        <button onclick="submitNewUser()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึก</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 2: สร้างทริป / ตี้กีฬา -->
+  <!-- Modal: สร้างทริป / ตี้กีฬา -->
   <div id="createEventModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
-      <h3 class="font-bold text-base mb-3">สร้างทริป หรือ ห้องเล่นกีฬา</h3>
-      <div class="space-y-3 text-sm">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">ประเภทกิจกรรม</label>
-          <select id="evType" class="w-full border rounded-xl px-3 py-2 bg-white">
-            <option value="Trip">✈️ ทริปเที่ยวกับเพื่อน (Trip Planner)</option>
-            <option value="Sport">🏸 ตีแบด / กีฬา / บอร์ดเกม (Matchmaking)</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อทริป / ชื่อตี้ *</label>
-          <input type="text" id="evTitle" placeholder="เช่น ตีแบดก๊วนวันศุกร์ หรือ ทริปเขาใหญ่" class="w-full border rounded-xl px-3 py-2">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">วันและเวลา</label>
-            <input type="datetime-local" id="evDateTime" class="w-full border rounded-xl px-3 py-2 text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">สถานที่ / สนาม</label>
-            <input type="text" id="evLocation" placeholder="เช่น คอร์ทแบด SB" class="w-full border rounded-xl px-3 py-2">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">รับจำนวนสูงสุด (คน)</label>
-            <input type="number" id="evMaxPeople" value="8" class="w-full border rounded-xl px-3 py-2">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">ระดับฝีมือ / หมายเหตุ</label>
-            <input type="text" id="evSkill" placeholder="เช่น มือเบา-กลาง, ชิลล์ๆ" class="w-full border rounded-xl px-3 py-2">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">รายละเอียดเพิ่มเติม</label>
-          <textarea id="evDesc" rows="2" placeholder="ระบุกฎกติกา ค่าสนามคร่าวๆ หรือจุดนัดพบ" class="w-full border rounded-xl px-3 py-2"></textarea>
-        </div>
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-3 text-sm">
+      <h3 class="font-bold text-base">สร้างทริป หรือ ห้องเล่นกีฬา</h3>
+      <select id="newEvType" class="w-full border rounded-xl px-3 py-2 bg-white">
+        <option value="Trip">✈️ ทริปเที่ยวกับเพื่อน</option>
+        <option value="Sport">🏸 ตีแบด / กีฬา / บอร์ดเกม</option>
+      </select>
+      <input type="text" id="newEvTitle" placeholder="ชื่อทริป / ชื่อตี้ *" class="w-full border rounded-xl px-3 py-2">
+      <input type="text" id="newEvLocation" placeholder="สถานที่ / ชื่อสนาม *" class="w-full border rounded-xl px-3 py-2">
+      <div class="grid grid-cols-2 gap-2">
+        <input type="datetime-local" id="newEvDate" class="w-full border rounded-xl px-3 py-2 text-xs">
+        <input type="number" id="newEvMax" value="8" placeholder="จำนวนคน" class="w-full border rounded-xl px-3 py-2">
       </div>
-      <div class="flex justify-end gap-2 mt-5">
-        <button onclick="closeModal('createEventModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
-        <button onclick="submitNewEvent()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">สร้างห้องเลย</button>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('createEventModal')" class="px-4 py-2 text-xs text-slate-500">ยกเลิก</button>
+        <button onclick="submitNewEvent()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">สร้างห้อง</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal 3: เพิ่มสถานที่ในตาราง & แนบไฟล์ตั๋ว -->
+  <!-- Modal: เพิ่มสถานที่โหวต -->
   <div id="itineraryModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
-      <h3 class="font-bold text-base mb-3">เพิ่มจุดหมาย / โหวต / แนบใบจอง</h3>
-      <div class="space-y-3 text-sm">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">วันที่ (Day)</label>
-            <input type="number" id="itDay" value="1" min="1" class="w-full border rounded-xl px-3 py-2">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">เวลา</label>
-            <input type="time" id="itTime" value="10:00" class="w-full border rounded-xl px-3 py-2">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อสถานที่ / ร้านอาหาร / ที่พัก *</label>
-          <input type="text" id="itPlace" placeholder="เช่น ร้านกาแฟบนดอย หรือ ตั๋วเครื่องบินขาไป" class="w-full border rounded-xl px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">โน้ตเพิ่มเติม</label>
-          <input type="text" id="itNotes" placeholder="เช่น รอโหวตจากเพื่อนๆ ก่อนจอง" class="w-full border rounded-xl px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">แนบไฟล์ตั๋ว / ใบจองที่พัก (รูปภาพหรือ PDF)</label>
-          <input type="file" id="itFile" accept="image/*,.pdf" class="w-full text-xs border rounded-xl p-2">
-        </div>
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 text-sm">
+      <h3 class="font-bold text-base">เพิ่มจุดหมาย / โหวตสถานที่</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="number" id="itDay" value="1" placeholder="วันที่" class="border rounded-xl px-3 py-2">
+        <input type="time" id="itTime" value="10:00" class="border rounded-xl px-3 py-2">
       </div>
-      <div class="flex justify-end gap-2 mt-5">
-        <button onclick="closeModal('itineraryModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
+      <input type="text" id="itPlace" placeholder="ชื่อสถานที่ / ร้านอาหาร *" class="w-full border rounded-xl px-3 py-2">
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('itineraryModal')" class="px-4 py-2 text-xs text-slate-500">ยกเลิก</button>
         <button onclick="submitItinerary()" class="bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึก</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal 4: เพิ่มบิลหารเงิน (2 รูปแบบ: หารเท่า vs แยกรายการ) -->
+  <!-- Modal: เพิ่มบิลหารเงิน 2 รูปแบบ -->
   <div id="expenseModal" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden overflow-y-auto">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl my-8">
-      <h3 class="font-bold text-base mb-3">เพิ่มบิลค่าใช้จ่าย</h3>
-      
-      <div class="space-y-3 text-sm">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อบิล *</label>
-            <input type="text" id="exTitle" placeholder="เช่น ค่าสนามแบด, ค่าหมูกระทะ" class="w-full border rounded-xl px-3 py-2">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">คนที่จ่ายสำรองไปก่อน *</label>
-            <select id="exPaidBy" class="w-full border rounded-xl px-3 py-2 bg-white"></select>
-          </div>
-        </div>
-
-        <!-- เลือกรูปแบบการหาร 2 แบบ -->
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">เลือกรูปแบบการหารเงิน</label>
-          <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-            <button type="button" onclick="toggleSplitMode('Equal')" id="mode-Equal" class="py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm">
-              ⚖️ แบบที่ 1: หารเท่ากัน
-            </button>
-            <button type="button" onclick="toggleSplitMode('Itemized')" id="mode-Itemized" class="py-2 text-xs font-semibold rounded-lg text-slate-600">
-              🧾 แบบที่ 2: แยกตามรายการ
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION A: หารเท่ากัน (Equal Split) -->
-        <div id="section-Equal" class="space-y-3 bg-slate-50 p-3.5 rounded-xl border">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">ยอดเงินรวมทั้งหมด (บาท) *</label>
-            <input type="number" id="exEqualAmount" placeholder="0.00" class="w-full border rounded-xl px-3 py-2 bg-white font-semibold text-blue-600">
-          </div>
-          <div>
-            <div class="flex justify-between items-center mb-1.5">
-              <label class="text-xs font-medium text-slate-600">เลือกคนที่จะร่วมหารบิลนี้:</label>
-              <button type="button" onclick="selectCheckedInOnly()" class="text-[11px] text-emerald-600 font-medium underline">เลือกเฉพาะคนเช็กชื่อแล้ว</button>
-            </div>
-            <div id="equalUsersCheckboxes" class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto"></div>
-          </div>
-        </div>
-
-        <!-- SECTION B: แยกตามรายการ (Itemized Split) -->
-        <div id="section-Itemized" class="space-y-3 bg-slate-50 p-3.5 rounded-xl border hidden">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-semibold text-slate-700">รายการอาหาร / ค่าใช้จ่ายย่อย</span>
-            <button type="button" onclick="addItemizedRow()" class="bg-slate-800 text-white text-[11px] px-2.5 py-1 rounded-lg">+ เพิ่มรายการ</button>
-          </div>
-          <div id="itemizedRowsContainer" class="space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
-          <div class="flex justify-between items-center pt-2 border-t text-xs font-bold">
-            <span>ยอดรวมทุกรายการ:</span>
-            <span id="itemizedTotalDisplay" class="text-blue-600 text-base">0.00 บาท</span>
-          </div>
-        </div>
-
-        <!-- แนบสลิป/ใบเสร็จ -->
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">แนบรูปใบเสร็จ / สลิปโอนเงิน (ถ้ามี)</label>
-          <input type="file" id="exFile" accept="image/*" class="w-full text-xs border rounded-xl p-2">
-        </div>
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-3 text-sm">
+      <h3 class="font-bold text-base">เพิ่มบิลค่าใช้จ่าย (เลือกวิธีหาร)</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" id="exTitle" placeholder="ชื่อบิล (เช่น ค่าสนาม, ค่าข้าว) *" class="border rounded-xl px-3 py-2">
+        <select id="exPaidBy" class="border rounded-xl px-3 py-2 bg-white"></select>
       </div>
 
-      <div class="flex justify-end gap-2 mt-5">
-        <button onclick="closeModal('expenseModal')" class="px-4 py-2 text-xs text-slate-600">ยกเลิก</button>
-        <button onclick="submitExpense()" class="bg-blue-600 text-white text-xs font-semibold px-5 py-2 rounded-xl">บันทึกบิล</button>
+      <!-- สลับ 2 รูปแบบการหาร -->
+      <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+        <button type="button" onclick="setSplitMode('Equal')" id="btnModeEqual" class="py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm">⚖️ แบบที่ 1: หารเท่ากัน</button>
+        <button type="button" onclick="setSplitMode('Itemized')" id="btnModeItemized" class="py-2 text-xs font-semibold rounded-lg text-slate-600">🧾 แบบที่ 2: แยกตามรายการ</button>
+      </div>
+
+      <!-- แบบที่ 1: หารเท่า -->
+      <div id="boxEqual" class="bg-slate-50 p-3.5 rounded-xl border space-y-2.5">
+        <input type="number" id="exEqualAmt" placeholder="ยอดเงินรวมทั้งหมด (บาท) *" class="w-full border rounded-xl px-3 py-2 bg-white font-bold text-blue-600">
+        <p class="text-xs font-semibold text-slate-600">เลือกผู้ร่วมหาร:</p>
+        <div id="equalCheckboxes" class="grid grid-cols-2 gap-1.5"></div>
+      </div>
+
+      <!-- แบบที่ 2: แยกรายการ -->
+      <div id="boxItemized" class="bg-slate-50 p-3.5 rounded-xl border space-y-2.5 hidden">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-semibold">รายการย่อย (เลือกคนรับผิดชอบแยกทีละรายการ)</span>
+          <button type="button" onclick="addItemRow()" class="bg-slate-900 text-white text-[11px] px-2.5 py-1 rounded-lg">+ เพิ่มรายการ</button>
+        </div>
+        <div id="itemRows" class="space-y-2 max-h-52 overflow-y-auto"></div>
+        <div class="text-right font-bold text-xs pt-2 border-t">รวมทั้งหมด: <span id="itemTotalTxt" class="text-blue-600 text-sm">0</span> บาท</div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('expenseModal')" class="px-4 py-2 text-xs text-slate-500">ยกเลิก</button>
+        <button onclick="submitExpense()" class="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">บันทึกบิล</button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <!-- ==================== JAVASCRIPT ==================== -->
   <script>
-    // 🔴 นำ Web App URL (/exec) จาก Google Apps Script มาวางแทนที่ตรงนี้ครับ
-    const API_URL = "https://script.google.com/macros/s/AKfycbyfj3A6l197lZtmiOiECLw69CA61fGFDhhCftP2hN4JZJHE0W73z4Nok8jHAtWzo5f3/exec";
+    // 🔴 ใส่ Web App URL (/exec) จาก Google Apps Script ตรงนี้ครับ
+    const API_URL = "https://script.google.com/macros/s/AKfycbyI3bWuDq3hqjV4NRiaJ1yOZI1ZzygnZEk8cMLUj2wKZYmaaD8MK-p_xUd3dN_EAG0G/exec";
 
-    // Global State
-    let appState = {
-      users: [],
-      events: [],
-      participants: [],
-      currentUserId: localStorage.getItem("gs_userId") || "",
-      currentEventId: "",
-      currentEventData: null,
+    let state = {
+      db: null,
+      currentUser: null,
+      selectedEventId: null,
       splitMode: "Equal",
-      itemizedCounter: 0
+      itemCounter: 0,
+      charts: {}
     };
 
-    // เริ่มต้นโหลดข้อมูลเมื่อเปิดหน้าเว็บ
-    window.onload = () => {
-      if (API_URL.includes("วาง_WEB_APP_URL")) {
-        alert("⚠️ กรุณาใส่ Web App URL ในไฟล์ index.html บรรทัด API_URL ก่อนใช้งานครับ");
-        return;
-      }
-      loadHomeData();
-    };
-
-    function showLoading(show) {
-      document.getElementById("loading").classList.toggle("hidden", !show);
-    }
-
+    function showLoading(show) { document.getElementById("loading").classList.toggle("hidden", !show); }
     function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
     function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
 
-    // ==========================================
-    // 1. API COMMUNICATION (GET & POST)
-    // ==========================================
-    async function apiGet(params) {
+    async function callAPI(payload = null) {
+      if (API_URL.includes("วาง_WEB_APP_URL")) {
+        alert("⚠️ กรุณานำ Web App URL (/exec) มาใส่ในตัวแปร API_URL ก่อนครับ");
+        return null;
+      }
       showLoading(true);
       try {
-        const query = new URLSearchParams(params).toString();
-        const res = await fetch(`${API_URL}?${query}`);
+        const res = payload
+          ? await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+          : await fetch(API_URL);
         const json = await res.json();
         if (json.status !== "success") throw new Error(json.message);
         return json.data;
       } catch (err) {
         alert("เกิดข้อผิดพลาด: " + err.message);
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    async function apiPost(payload) {
-      showLoading(true);
-      try {
-        // ใช้ text/plain เพื่อหลีกเลี่ยง CORS Preflight ของ Google Apps Script
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.status !== "success") throw new Error(json.message);
-        return json.data;
-      } catch (err) {
-        alert("บันทึกไม่สำเร็จ: " + err.message);
+        return null;
       } finally {
         showLoading(false);
       }
     }
 
     // ==========================================
-    // 2. HOME VIEW & USER MANAGEMENT
+    // 1. AUTHENTICATION & ROLE-BASED ACCESS (RBAC)
     // ==========================================
-    async function loadHomeData() {
-      const data = await apiGet({ action: "getAll" });
-      if (!data) return;
-      appState.users = data.users;
-      appState.events = data.events;
-      appState.participants = data.participants;
-
-      renderUserDropdown();
-      renderEventsList("All");
+    function quickLogin(username, password) {
+      document.getElementById("loginUsername").value = username;
+      document.getElementById("loginPassword").value = password;
+      handleLogin();
     }
 
-    function renderUserDropdown() {
-      const select = document.getElementById("currentUserSelect");
-      select.innerHTML = appState.users.map(u => `<option value="${u.User_ID}">${u.Name}</option>`).join("");
-      
-      if (!appState.currentUserId && appState.users.length > 0) {
-        appState.currentUserId = appState.users[0].User_ID;
+    async function handleLogin() {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      if (!username || !password) return alert("กรุณากรอกข้อมูลให้ครบ");
+
+      const loginRes = await callAPI({ action: "login", username, password });
+      if (!loginRes) return;
+
+      state.currentUser = loginRes.user;
+      await refreshData();
+
+      // สลับจากหน้า Login เข้าสู่ระบบหลัก
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("mainApp").classList.remove("hidden");
+      applyRolePermissions();
+    }
+
+    function logout() {
+      state.currentUser = null;
+      document.getElementById("mainApp").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+    }
+
+    function applyRolePermissions() {
+      const role = state.currentUser.role;
+      document.getElementById("navRoleBadge").innerText = `${state.currentUser.name} (${role})`;
+      document.getElementById("roleWelcomeText").innerText = `เข้าสู่ระบบในฐานะ: ${role} — จัดการกิจกรรมและค่าใช้จ่ายได้ทันที`;
+
+      // แสดงเมนู Admin เฉพาะคนที่มีสิทธิ์ Admin เท่านั้น
+      document.getElementById("menu-admin").classList.toggle("hidden", role !== "Admin");
+
+      // หากเป็น Admin ให้เปิดหน้า Dashboard เป็นหน้าแรกเพื่อให้เห็นภาพรวมทันที
+      if (role === "Admin") {
+        switchMainPage("page-dashboard");
+      } else {
+        switchMainPage("page-events");
       }
-      select.value = appState.currentUserId;
     }
 
-    function changeCurrentUser() {
-      appState.currentUserId = document.getElementById("currentUserSelect").value;
-      localStorage.setItem("gs_userId", appState.currentUserId);
-      if (appState.currentEventId) openEventDetail(appState.currentEventId);
+    function switchMainPage(pageId) {
+      document.querySelectorAll(".main-page").forEach(p => p.classList.add("hidden"));
+      document.getElementById(pageId).classList.remove("hidden");
+
+      if (pageId === "page-dashboard") renderDashboard();
+      if (pageId === "page-admin") renderAdminPanel();
+      if (pageId === "page-events") renderEventsGrid();
     }
 
-    async function submitNewUser() {
-      const name = document.getElementById("newUserName").value.trim();
-      const promptPay = document.getElementById("newUserPromptPay").value.trim();
-      if (!name) return alert("กรุณากรอกชื่อ");
-
-      await apiPost({ action: "createUser", name, promptPay });
-      closeModal("userModal");
-      document.getElementById("newUserName").value = "";
-      document.getElementById("newUserPromptPay").value = "";
-      loadHomeData();
+    async function refreshData() {
+      const db = await callAPI();
+      if (!db) return;
+      state.db = db;
+      renderNotifications();
+      if (state.selectedEventId) renderEventDetail();
+      else renderEventsGrid();
     }
 
-    function filterEvents(type) {
-      document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.className = "filter-btn bg-white text-slate-600 border text-xs px-3.5 py-1.5 rounded-full font-medium";
-      });
-      document.getElementById(`filter-${type}`).className = "filter-btn bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded-full font-medium";
-      renderEventsList(type);
+    // ==========================================
+    // 2. NOTIFICATION CENTER
+    // ==========================================
+    function toggleNotifDropdown() {
+      document.getElementById("notifDropdown").classList.toggle("hidden");
     }
 
-    function renderEventsList(filterType) {
-      const container = document.getElementById("eventsList");
-      const filtered = filterType === "All" ? appState.events : appState.events.filter(e => e.Type === filterType);
+    function renderNotifications() {
+      const notifs = state.db.notifications || [];
+      document.getElementById("notifCount").innerText = notifs.length;
+      document.getElementById("notifList").innerHTML = notifs.map(n => `
+        <div class="p-3 hover:bg-slate-50">
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span class="font-bold text-blue-600">${n.title}</span>
+            <span>${n.time}</span>
+          </div>
+          <p class="text-slate-700 mt-0.5">${n.message}</p>
+        </div>
+      `).join("");
+    }
 
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm bg-white rounded-2xl border">ยังไม่มีกิจกรรมในหมวดนี้ กด "+ สร้างห้องใหม่" ได้เลย!</div>`;
-        return;
-      }
-
-      container.innerHTML = filtered.slice().reverse().map(ev => {
-        const joined = appState.participants.filter(p => p.Event_ID === ev.Event_ID && p.Status === "Joined").length;
-        const isTrip = ev.Type === "Trip";
+    // ==========================================
+    // 3. EVENTS & STATUS PIPELINE
+    // ==========================================
+    function renderEventsGrid() {
+      const grid = document.getElementById("eventsGrid");
+      const events = state.db.events || [];
+      grid.innerHTML = events.map(ev => {
+        const statusColors = {
+          Open: "bg-blue-100 text-blue-700",
+          Confirmed: "bg-amber-100 text-amber-800",
+          InProgress: "bg-purple-100 text-purple-700",
+          Completed: "bg-emerald-100 text-emerald-700"
+        };
         return `
-          <div onclick="openEventDetail('${ev.Event_ID}')" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-300 cursor-pointer transition">
-            <div class="flex justify-between items-start">
-              <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${isTrip ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}">
-                ${isTrip ? '✈️ ทริปเที่ยว' : '🏸 กีฬา/กิจกรรม'}
-              </span>
-              <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                👥 ${joined}/${ev.Max_People} คน
+          <div onclick="openEventDetail('${ev.id}')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-400 cursor-pointer transition">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-semibold">${ev.type === 'Trip' ? '✈️ ทริปเที่ยว' : '🏸 กีฬา/กิจกรรม'}</span>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full ${statusColors[ev.status] || 'bg-slate-100'}">
+                ● ${ev.status}
               </span>
             </div>
-            <h3 class="font-bold text-base text-slate-900 mt-2">${ev.Title}</h3>
-            <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">${ev.Description || '-'}</p>
-            <div class="flex items-center gap-4 mt-3 pt-2.5 border-t text-[11px] text-slate-500">
-              <span>📍 ${ev.Location || '-'}</span>
-              <span>🕒 ${ev.Date_Time || '-'}</span>
+            <h3 class="font-bold text-base text-slate-900">${ev.title}</h3>
+            <p class="text-xs text-slate-500 mt-1">📍 ${ev.location} • 🕒 ${ev.dateTime}</p>
+            <div class="mt-3 pt-3 border-t flex justify-between items-center text-xs text-slate-600">
+              <span>👥 สมาชิก ${ev.participants.length}/${ev.maxPeople} คน</span>
+              <span>💸 ${ev.expenses.length} บิลค่าใช้จ่าย</span>
             </div>
           </div>
         `;
@@ -482,319 +538,259 @@
     }
 
     async function submitNewEvent() {
-      const title = document.getElementById("evTitle").value.trim();
+      const title = document.getElementById("newEvTitle").value.trim();
       if (!title) return alert("กรุณาใส่ชื่อกิจกรรม");
 
-      await apiPost({
+      state.db = await callAPI({
         action: "createEvent",
-        type: document.getElementById("evType").value,
-        title: title,
-        dateTime: document.getElementById("evDateTime").value.replace("T", " "),
-        location: document.getElementById("evLocation").value,
-        maxPeople: document.getElementById("evMaxPeople").value,
-        skillLevel: document.getElementById("evSkill").value,
-        description: document.getElementById("evDesc").value,
-        hostId: appState.currentUserId
+        type: document.getElementById("newEvType").value,
+        title,
+        location: document.getElementById("newEvLocation").value,
+        dateTime: document.getElementById("newEvDate").value.replace("T", " "),
+        maxPeople: document.getElementById("newEvMax").value,
+        creatorId: state.currentUser.id
       });
       closeModal("createEventModal");
-      loadHomeData();
+      renderNotifications();
+      renderEventsGrid();
     }
 
-    // ==========================================
-    // 3. EVENT DETAIL VIEW (ITINERARY, MEMBERS, EXPENSE)
-    // ==========================================
-    function showHome() {
-      appState.currentEventId = "";
-      document.getElementById("detailView").classList.add("hidden");
-      document.getElementById("homeView").classList.remove("hidden");
-      loadHomeData();
+    function openEventDetail(eventId) {
+      state.selectedEventId = eventId;
+      document.getElementById("eventsListView").classList.add("hidden");
+      document.getElementById("eventDetailView").classList.remove("hidden");
+      renderEventDetail();
     }
 
-    function switchTab(tabId) {
-      document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
-      document.getElementById(tabId).classList.remove("hidden");
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.className = "tab-btn text-slate-600 py-2 rounded-lg";
+    function closeEventDetail() {
+      state.selectedEventId = null;
+      document.getElementById("eventDetailView").classList.add("hidden");
+      document.getElementById("eventsListView").classList.remove("hidden");
+      renderEventsGrid();
+    }
+
+    function renderEventDetail() {
+      const ev = state.db.events.find(x => x.id === state.selectedEventId);
+      if (!ev) return;
+
+      document.getElementById("detTitle").innerText = ev.title;
+
+      // 1. Render 4-Step Status Pipeline
+      const steps = ["Open", "Confirmed", "InProgress", "Completed"];
+      const currentIdx = steps.indexOf(ev.status);
+      steps.forEach((st, idx) => {
+        const el = document.getElementById(`step-${st}`);
+        if (idx < currentIdx) el.className = "p-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold";
+        else if (idx === currentIdx) el.className = "p-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold shadow-sm";
+        else el.className = "p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-400";
       });
-      document.getElementById(`btn-${tabId}`).className = "tab-btn bg-white text-slate-900 py-2 rounded-lg shadow-sm";
-    }
 
-    async function openEventDetail(eventId) {
-      appState.currentEventId = eventId;
-      const data = await apiGet({ action: "getEventDetail", eventId });
-      if (!data) return;
-      appState.currentEventData = data;
-
-      document.getElementById("homeView").classList.add("hidden");
-      document.getElementById("detailView").classList.remove("hidden");
-
-      // Header Info
-      const ev = data.event;
-      const joinedCount = data.participants.filter(p => p.Status === "Joined").length;
-      document.getElementById("detBadge").innerText = ev.Type === "Trip" ? "✈️ ทริปเที่ยว" : "🏸 ตี้กีฬา/กิจกรรม";
-      document.getElementById("detTitle").innerText = ev.Title;
-      document.getElementById("detDesc").innerText = ev.Description || "";
-      document.getElementById("detLocation").innerText = ev.Location || "-";
-      document.getElementById("detDateTime").innerText = ev.Date_Time || "-";
-      document.getElementById("detCapacity").innerText = `${joinedCount}/${ev.Max_People} คน`;
-      document.getElementById("detSkill").innerText = ev.Skill_Level || "ทุกระดับ";
-
-      // ซ่อนปุ่มเข้าร่วมถ้าผู้ใช้อยู่ในห้องแล้ว
-      const isJoined = data.participants.some(p => p.User_ID === appState.currentUserId);
-      document.getElementById("btnJoinEvent").classList.toggle("hidden", isJoined);
-
-      renderItinerary(data.itinerary);
-      renderParticipants(data.participants, data.users);
-      renderExpensesAndSettlement(data);
-    }
-
-    async function joinCurrentEvent() {
-      const res = await apiPost({
-        action: "joinEvent",
-        eventId: appState.currentEventId,
-        userId: appState.currentUserId
-      });
-      if (res) {
-        alert(res.joinStatus === "Joined" ? "✅ เข้าร่วมสำเร็จ (ตัวจริง)" : "⏳ ห้องเต็มแล้ว คุณอยู่ในคิวตัวสำรอง (Waitlist)");
-        openEventDetail(appState.currentEventId);
-      }
-    }
-
-    // --- Tab 1: Itinerary & Polls ---
-    function renderItinerary(items) {
-      const container = document.getElementById("itineraryList");
-      if (items.length === 0) {
-        container.innerHTML = `<div class="text-center py-8 bg-white rounded-2xl border text-xs text-slate-400">ยังไม่มีแผนเดินทาง หรือสถานที่ให้โหวต</div>`;
-        return;
+      // ปุ่มเปลี่ยนสถานะ (อนุญาตเฉพาะ Provider และ Admin หรือเมื่อยังไม่ใช่ขั้นสุดท้าย)
+      const actionArea = document.getElementById("statusActionArea");
+      const canManageStatus = state.currentUser.role === "Provider" || state.currentUser.role === "Admin";
+      if (canManageStatus && currentIdx < steps.length - 1) {
+        const nextStatus = steps[currentIdx + 1];
+        actionArea.innerHTML = `
+          <button onclick="advanceStatus('${nextStatus}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow">
+            เลื่อนสถานะเป็น ${nextStatus} ➔
+          </button>
+        `;
+      } else if (!canManageStatus) {
+        actionArea.innerHTML = `<span class="text-[11px] bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg">สิทธิ์ ${state.currentUser.role} (ดูสถานะได้อย่างเดียว)</span>`;
+      } else {
+        actionArea.innerHTML = `<span class="text-xs font-bold text-emerald-600">✅ เสร็จสมบูรณ์ทุกขั้นตอน</span>`;
       }
 
-      container.innerHTML = items.map(it => {
-        const votes = JSON.parse(it.Vote_Users_JSON || "[]");
-        const hasVoted = votes.includes(appState.currentUserId);
+      // 2. Render Members & Check-in
+      const isJoined = ev.participants.some(p => p.userId === state.currentUser.id);
+      document.getElementById("btnJoin").classList.toggle("hidden", isJoined);
+      document.getElementById("detMembersList").innerHTML = ev.participants.map(p => {
+        const u = state.db.users.find(x => x.id === p.userId) || { name: p.userId };
         return `
-          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="bg-slate-100 text-slate-700 text-[11px] font-bold px-2 py-0.5 rounded">Day ${it.Day} • ${it.Time}</span>
-                ${it.Doc_URL ? `<a href="${it.Doc_URL}" target="_blank" class="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium hover:underline">📎 เปิดดูตั๋ว/ใบจอง</a>` : ''}
-              </div>
-              <h4 class="font-bold text-sm text-slate-900 mt-1">${it.Place_Name}</h4>
-              <p class="text-xs text-slate-500">${it.Notes || ''}</p>
-            </div>
-            <button onclick="votePlace('${it.Item_ID}')" class="shrink-0 px-3 py-2 rounded-xl border text-xs font-semibold transition ${hasVoted ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}">
-              👍 ${votes.length}
+          <div class="py-2.5 flex justify-between items-center">
+            <span class="font-medium">${u.name}</span>
+            <button onclick="toggleCheckIn('${p.userId}')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold ${p.checkedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">
+              ${p.checkedIn ? '✅ เช็กชื่อแล้ว' : 'รอเช็กชื่อ'}
             </button>
           </div>
         `;
       }).join("");
+
+      // 3. Render Itinerary & Polls
+      document.getElementById("detItineraryList").innerHTML = ev.itinerary.length === 0
+        ? `<p class="text-slate-400 text-center py-3">ยังไม่มีรายการสถานที่</p>`
+        : ev.itinerary.map(it => `
+          <div class="p-2.5 rounded-xl border flex justify-between items-center">
+            <div>
+              <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-bold">Day ${it.day} • ${it.time}</span>
+              <p class="font-semibold mt-0.5">${it.place}</p>
+            </div>
+            <button onclick="votePlace('${it.id}')" class="px-2.5 py-1 rounded-lg border font-bold ${it.votes.includes(state.currentUser.id) ? 'bg-blue-600 text-white' : 'bg-slate-50'}">
+              👍 ${it.votes.length}
+            </button>
+          </div>
+        `).join("");
+
+      // 4. Render Expenses & Settlement
+      renderExpensesAndSettlement(ev);
     }
 
-    async function votePlace(itemId) {
-      await apiPost({ action: "voteItinerary", itemId, userId: appState.currentUserId });
-      openEventDetail(appState.currentEventId);
+    async function advanceStatus(newStatus) {
+      state.db = await callAPI({
+        action: "updateStatus",
+        eventId: state.selectedEventId,
+        newStatus,
+        actorName: `${state.currentUser.name} (${state.currentUser.role})`
+      });
+      renderNotifications();
+      renderEventDetail();
+    }
+
+    async function joinEvent() {
+      state.db = await callAPI({ action: "joinEvent", eventId: state.selectedEventId, userId: state.currentUser.id });
+      renderEventDetail();
+    }
+
+    async function toggleCheckIn(userId) {
+      state.db = await callAPI({ action: "toggleCheckIn", eventId: state.selectedEventId, userId });
+      renderEventDetail();
     }
 
     async function submitItinerary() {
-      const placeName = document.getElementById("itPlace").value.trim();
-      if (!placeName) return alert("กรุณาใส่ชื่อสถานที่");
-
-      const fileInput = document.getElementById("itFile");
-      let fileData = { base64: "", name: "", type: "" };
-      if (fileInput.files.length > 0) {
-        fileData = await readFileAsBase64(fileInput.files[0]);
-      }
-
-      await apiPost({
+      const place = document.getElementById("itPlace").value.trim();
+      if (!place) return;
+      state.db = await callAPI({
         action: "addItinerary",
-        eventId: appState.currentEventId,
+        eventId: state.selectedEventId,
         day: document.getElementById("itDay").value,
         time: document.getElementById("itTime").value,
-        placeName: placeName,
-        notes: document.getElementById("itNotes").value,
-        userId: appState.currentUserId,
-        fileBase64: fileData.base64,
-        fileName: fileData.name,
-        mimeType: fileData.type
+        place,
+        userId: state.currentUser.id
+      });
+      closeModal("itineraryModal");
+      renderEventDetail();
+    }
+
+    async function votePlace(itemId) {
+      state.db = await callAPI({ action: "voteItinerary", eventId: state.selectedEventId, itemId, userId: state.currentUser.id });
+      renderEventDetail();
+    }
+
+    // ==========================================
+    // 4. EXPENSE SPLITTING (หารเท่า vs แยกรายการ)
+    // ==========================================
+    function renderExpensesAndSettlement(ev) {
+      // คำนวณยอดสุทธิ (Debt Simplification)
+      let bal = {};
+      ev.participants.forEach(p => bal[p.userId] = 0);
+      ev.expenses.forEach(exp => {
+        bal[exp.paidBy] = (bal[exp.paidBy] || 0) + Number(exp.totalAmount);
+        exp.details.forEach(d => {
+          const share = Number(d.amount) / d.assignedUsers.length;
+          d.assignedUsers.forEach(uid => bal[uid] = (bal[uid] || 0) - share);
+        });
       });
 
-      closeModal("itineraryModal");
-      document.getElementById("itPlace").value = "";
-      document.getElementById("itFile").value = "";
-      openEventDetail(appState.currentEventId);
-    }
+      let debtors = [], creditors = [];
+      for (let uid in bal) {
+        if (bal[uid] < -0.01) debtors.push({ uid, amt: Math.abs(bal[uid]) });
+        if (bal[uid] > 0.01) creditors.push({ uid, amt: bal[uid] });
+      }
 
-    // --- Tab 2: Members & Check-in ---
-    function renderParticipants(participants, users) {
-      const container = document.getElementById("participantsList");
-      container.innerHTML = participants.map(p => {
-        const user = users.find(u => u.User_ID === p.User_ID) || { Name: p.User_ID };
-        const isChecked = String(p.Checked_In).toUpperCase() === "TRUE";
-        return `
-          <div class="py-3 flex justify-between items-center">
+      let txs = [], i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        let min = Math.min(debtors[i].amt, creditors[j].amt);
+        const fromU = state.db.users.find(u => u.id === debtors[i].uid) || { name: debtors[i].uid };
+        const toU = state.db.users.find(u => u.id === creditors[j].uid) || { name: creditors[j].uid, promptPay: "" };
+        txs.push({ from: fromU.name, to: toU.name, pp: toU.promptPay, amt: Math.round(min * 100) / 100 });
+        debtors[i].amt -= min; creditors[j].amt -= min;
+        if (debtors[i].amt < 0.01) i++;
+        if (creditors[j].amt < 0.01) j++;
+      }
+
+      document.getElementById("detSettlementList").innerHTML = txs.length === 0
+        ? `<p class="text-slate-400">ยอดเงินลงตัวแล้ว ไม่มีรายการค้างโอน 🎉</p>`
+        : txs.map(t => `
+          <div class="bg-white/10 p-2.5 rounded-xl flex justify-between items-center">
             <div>
-              <span class="font-semibold text-sm text-slate-800">${user.Name}</span>
-              <span class="text-[11px] ml-1.5 px-2 py-0.5 rounded-full ${p.Status === 'Joined' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}">
-                ${p.Status === 'Joined' ? 'ตัวจริง' : 'ตัวสำรอง'}
-              </span>
+              <span class="text-amber-300 font-bold">${t.from}</span> โอนให้ <span class="text-emerald-300 font-bold">${t.to}</span>
+              ${t.pp ? `<div class="text-[10px] text-slate-300">พร้อมเพย์: ${t.pp}</div>` : ''}
             </div>
-            ${isChecked 
-              ? `<span class="text-xs font-semibold text-emerald-600">✅ เช็กชื่อแล้ว</span>`
-              : `<button onclick="checkInMember('${p.Participant_ID}')" class="bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg">กดเช็กชื่อ</button>`
-            }
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function checkInMember(participantId) {
-      await apiPost({ action: "checkIn", participantId });
-      openEventDetail(appState.currentEventId);
-    }
-
-    // ==========================================
-    // 4. EXPENSE SPLITTING (หาร 2 แบบ + สรุปยอดโอน)
-    // ==========================================
-    function renderExpensesAndSettlement(data) {
-      // 1. แสดงยอดสรุปโอนสุทธิ (Debt Simplification)
-      const setContainer = document.getElementById("settlementList");
-      const txs = data.settlement.transactions;
-      if (txs.length === 0) {
-        setContainer.innerHTML = `<p class="text-slate-300">ยังไม่มีรายการค้างชำระ หรือยอดเงินลงตัวแล้ว 🎉</p>`;
-      } else {
-        setContainer.innerHTML = txs.map(t => `
-          <div class="bg-white/10 rounded-xl p-3 flex justify-between items-center">
-            <div>
-              <span class="font-bold text-amber-300">${t.fromName}</span> 
-              <span class="text-slate-300 mx-1">โอนให้</span> 
-              <span class="font-bold text-emerald-300">${t.toName}</span>
-              ${t.toPromptPay ? `<div class="text-[11px] text-slate-300 mt-0.5">📱 พร้อมเพย์: <span class="underline select-all">${t.toPromptPay}</span></div>` : ''}
-            </div>
-            <div class="text-base font-bold text-white">${t.amount.toLocaleString()} ฿</div>
+            <span class="font-bold text-sm">${t.amt.toLocaleString()} ฿</span>
           </div>
         `).join("");
-      }
 
-      // 2. แสดงรายการบิลทั้งหมด
-      const expContainer = document.getElementById("expensesList");
-      if (data.expenses.length === 0) {
-        expContainer.innerHTML = `<div class="text-center py-8 bg-white rounded-2xl border text-xs text-slate-400">ยังไม่มีบิลค่าใช้จ่าย</div>`;
-        return;
-      }
-
-      expContainer.innerHTML = data.expenses.slice().reverse().map(exp => {
-        const payer = data.users.find(u => u.User_ID === exp.Paid_By) || { Name: exp.Paid_By };
-        const details = data.expenseDetails.filter(d => d.Expense_ID === exp.Expense_ID);
-        const isEqual = exp.Split_Type === "Equal";
-
-        const detailsHtml = details.map(d => {
-          const uIds = JSON.parse(d.Assigned_Users_JSON || "[]");
-          const names = uIds.map(id => (data.users.find(u => u.User_ID === id) || { Name: id }).Name).join(", ");
-          return `<div class="text-[11px] text-slate-500 mt-1">• ${d.Item_Name} (${Number(d.Amount).toLocaleString()}฿) → <span class="text-slate-700 font-medium">${names}</span></div>`;
-        }).join("");
-
-        return `
-          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${isEqual ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}">
-                  ${isEqual ? '⚖️ หารเท่ากัน' : '🧾 แยกตามรายการ'}
-                </span>
-                <h4 class="font-bold text-sm text-slate-900 mt-1">${exp.Title}</h4>
-                <p class="text-xs text-slate-500">สำรองจ่ายโดย: <span class="font-semibold text-slate-700">${payer.Name}</span></p>
+      document.getElementById("detExpensesList").innerHTML = ev.expenses.length === 0
+        ? `<p class="text-slate-400 text-center py-3">ยังไม่มีบิลค่าใช้จ่าย</p>`
+        : ev.expenses.map(exp => {
+          const payer = state.db.users.find(u => u.id === exp.paidBy) || { name: exp.paidBy };
+          const detHtml = exp.details.map(d => {
+            const names = d.assignedUsers.map(id => (state.db.users.find(u => u.id === id) || { name: id }).name).join(", ");
+            return `<div class="text-[11px] text-slate-500">• ${d.name} (${d.amount}฿) → ${names}</div>`;
+          }).join("");
+          return `
+            <div class="p-3 rounded-xl border bg-slate-50/50">
+              <div class="flex justify-between font-bold">
+                <span>${exp.splitType === 'Equal' ? '⚖️' : '🧾'} ${exp.title}</span>
+                <span class="text-blue-600">${exp.totalAmount.toLocaleString()} ฿</span>
               </div>
-              <div class="text-right">
-                <div class="font-bold text-base text-slate-900">${Number(exp.Total_Amount).toLocaleString()} ฿</div>
-                ${exp.Receipt_URL ? `<a href="${exp.Receipt_URL}" target="_blank" class="text-[11px] text-blue-600 underline">ดูสลิป</a>` : ''}
-              </div>
+              <div class="text-[11px] text-slate-500 mb-1">จ่ายสำรองโดย: ${payer.name}</div>
+              ${detHtml}
             </div>
-            <div class="mt-2 pt-2 border-t border-slate-100">${detailsHtml}</div>
-          </div>
-        `;
-      }).join("");
+          `;
+        }).join("");
     }
 
-    // เปิด Modal เพิ่มบิล และสร้าง Checkbox รายชื่อคนในห้อง
     function openExpenseModal() {
-      const data = appState.currentEventData;
-      const members = data.participants.map(p => {
-        const u = data.users.find(x => x.User_ID === p.User_ID) || { User_ID: p.User_ID, Name: p.User_ID };
-        return { ...u, checkedIn: String(p.Checked_In).toUpperCase() === "TRUE" };
-      });
+      const ev = state.db.events.find(x => x.id === state.selectedEventId);
+      const members = ev.participants.map(p => state.db.users.find(u => u.id === p.userId) || { id: p.userId, name: p.userId });
 
-      // Dropdown คนจ่ายสำรอง
-      document.getElementById("exPaidBy").innerHTML = members.map(m => 
-        `<option value="${m.User_ID}" ${m.User_ID === appState.currentUserId ? 'selected' : ''}>${m.Name}</option>`
-      ).join("");
-
-      // Checkboxes สำหรับโหมดหารเท่า
-      document.getElementById("equalUsersCheckboxes").innerHTML = members.map(m => `
-        <label class="flex items-center gap-2 bg-white p-2 rounded-lg border text-xs cursor-pointer">
-          <input type="checkbox" class="eq-user-cb" value="${m.User_ID}" data-checkedin="${m.checkedIn}" checked>
-          <span>${m.Name}</span>
+      document.getElementById("exPaidBy").innerHTML = members.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+      document.getElementById("equalCheckboxes").innerHTML = members.map(m => `
+        <label class="flex items-center gap-1.5 bg-white p-2 rounded-lg border text-xs">
+          <input type="checkbox" class="eq-cb" value="${m.id}" checked> <span>${m.name}</span>
         </label>
       `).join("");
 
-      // รีเซ็ตโหมดแยกรายการ
-      document.getElementById("itemizedRowsContainer").innerHTML = "";
-      appState.itemizedCounter = 0;
-      addItemizedRow();
-
-      toggleSplitMode("Equal");
+      document.getElementById("itemRows").innerHTML = "";
+      state.itemCounter = 0;
+      addItemRow();
+      setSplitMode("Equal");
       openModal("expenseModal");
     }
 
-    function toggleSplitMode(mode) {
-      appState.splitMode = mode;
-      document.getElementById("section-Equal").classList.toggle("hidden", mode !== "Equal");
-      document.getElementById("section-Itemized").classList.toggle("hidden", mode !== "Itemized");
-
-      document.getElementById("mode-Equal").className = mode === "Equal" 
-        ? "py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm" 
-        : "py-2 text-xs font-semibold rounded-lg text-slate-600";
-      document.getElementById("mode-Itemized").className = mode === "Itemized" 
-        ? "py-2 text-xs font-semibold rounded-lg bg-white text-purple-600 shadow-sm" 
-        : "py-2 text-xs font-semibold rounded-lg text-slate-600";
+    function setSplitMode(mode) {
+      state.splitMode = mode;
+      document.getElementById("boxEqual").classList.toggle("hidden", mode !== "Equal");
+      document.getElementById("boxItemized").classList.toggle("hidden", mode !== "Itemized");
+      document.getElementById("btnModeEqual").className = mode === "Equal" ? "py-2 text-xs font-semibold rounded-lg bg-white text-blue-600 shadow-sm" : "py-2 text-xs font-semibold rounded-lg text-slate-600";
+      document.getElementById("btnModeItemized").className = mode === "Itemized" ? "py-2 text-xs font-semibold rounded-lg bg-white text-purple-600 shadow-sm" : "py-2 text-xs font-semibold rounded-lg text-slate-600";
     }
 
-    function selectCheckedInOnly() {
-      document.querySelectorAll(".eq-user-cb").forEach(cb => {
-        cb.checked = cb.dataset.checkedin === "true";
-      });
-    }
+    function addItemRow() {
+      const idx = ++state.itemCounter;
+      const ev = state.db.events.find(x => x.id === state.selectedEventId);
+      const members = ev.participants.map(p => state.db.users.find(u => u.id === p.userId) || { id: p.userId, name: p.userId });
+      const tags = members.map(m => `<label class="inline-flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]"><input type="checkbox" class="it-cb-${idx}" value="${m.id}" checked>${m.name}</label>`).join("");
 
-    // เพิ่มแถวรายการย่อย (สำหรับโหมดแยกตามรายการ)
-    function addItemizedRow() {
-      const idx = ++appState.itemizedCounter;
-      const data = appState.currentEventData;
-      const members = data.participants.map(p => data.users.find(x => x.User_ID === p.User_ID) || { User_ID: p.User_ID, Name: p.User_ID });
-
-      const userTags = members.map(m => `
-        <label class="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded text-[11px] cursor-pointer">
-          <input type="checkbox" class="item-user-cb-${idx}" value="${m.User_ID}" checked>
-          <span>${m.Name}</span>
-        </label>
-      `).join("");
-
-      const html = `
-        <div id="item-row-${idx}" class="bg-white p-3 rounded-xl border space-y-2">
-          <div class="flex gap-2">
-            <input type="text" placeholder="ชื่อรายการ (เช่น ส้มตำ, น้ำแข็ง)" class="item-name-${idx} flex-1 border rounded-lg px-2.5 py-1.5 text-xs">
-            <input type="number" oninput="calcItemizedTotal()" placeholder="ราคา" class="item-amt-${idx} w-24 border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-right">
-            <button type="button" onclick="document.getElementById('item-row-${idx}').remove(); calcItemizedTotal();" class="text-red-500 text-xs px-1">✕</button>
+      document.getElementById("itemRows").insertAdjacentHTML("beforeend", `
+        <div id="irow-${idx}" class="bg-white p-2.5 rounded-xl border space-y-1.5">
+          <div class="flex gap-1.5">
+            <input type="text" placeholder="ชื่อรายการ" class="it-name-${idx} flex-1 border rounded-lg px-2 py-1 text-xs">
+            <input type="number" oninput="calcItemSum()" placeholder="บาท" class="it-amt-${idx} w-20 border rounded-lg px-2 py-1 text-xs text-right font-bold">
           </div>
-          <div class="flex flex-wrap gap-1">${userTags}</div>
+          <div class="flex flex-wrap gap-1">${tags}</div>
         </div>
-      `;
-      document.getElementById("itemizedRowsContainer").insertAdjacentHTML("beforeend", html);
+      `);
     }
 
-    function calcItemizedTotal() {
+    function calcItemSum() {
       let sum = 0;
-      for (let i = 1; i <= appState.itemizedCounter; i++) {
-        const el = document.querySelector(`.item-amt-${i}`);
+      for (let i = 1; i <= state.itemCounter; i++) {
+        const el = document.querySelector(`.it-amt-${i}`);
         if (el) sum += Number(el.value || 0);
       }
-      document.getElementById("itemizedTotalDisplay").innerText = `${sum.toLocaleString()} บาท`;
+      document.getElementById("itemTotalTxt").innerText = sum.toLocaleString();
       return sum;
     }
 
@@ -802,69 +798,137 @@
       const title = document.getElementById("exTitle").value.trim();
       if (!title) return alert("กรุณาใส่ชื่อบิล");
 
-      const paidBy = document.getElementById("exPaidBy").value;
-      const fileInput = document.getElementById("exFile");
-      let fileData = { base64: "", name: "", type: "" };
-      if (fileInput.files.length > 0) {
-        fileData = await readFileAsBase64(fileInput.files[0]);
-      }
-
-      let payload = {
-        action: "addExpense",
-        eventId: appState.currentEventId,
-        title: title,
-        paidBy: paidBy,
-        splitType: appState.splitMode,
-        fileBase64: fileData.base64,
-        fileName: fileData.name,
-        mimeType: fileData.type
-      };
-
-      if (appState.splitMode === "Equal") {
-        const amount = Number(document.getElementById("exEqualAmount").value);
-        const assignedUsers = Array.from(document.querySelectorAll(".eq-user-cb:checked")).map(cb => cb.value);
-        if (amount <= 0 || assignedUsers.length === 0) return alert("กรุณากรอกยอดเงินและเลือกผู้ร่วมหารอย่างน้อย 1 คน");
-
-        payload.totalAmount = amount;
-        payload.assignedUsers = assignedUsers;
+      let totalAmount = 0, details = [];
+      if (state.splitMode === "Equal") {
+        totalAmount = Number(document.getElementById("exEqualAmt").value);
+        const users = Array.from(document.querySelectorAll(".eq-cb:checked")).map(c => c.value);
+        if (totalAmount <= 0 || users.length === 0) return alert("กรุณากรอกยอดเงินและเลือกคนหาร");
+        details.push({ name: title + " (หารเท่า)", amount: totalAmount, assignedUsers: users });
       } else {
-        let items = [];
-        let total = 0;
-        for (let i = 1; i <= appState.itemizedCounter; i++) {
-          const nameEl = document.querySelector(`.item-name-${i}`);
-          const amtEl = document.querySelector(`.item-amt-${i}`);
-          if (!nameEl || !amtEl) continue;
-
-          const itemName = nameEl.value.trim() || `รายการที่ ${i}`;
-          const itemAmt = Number(amtEl.value || 0);
-          const users = Array.from(document.querySelectorAll(`.item-user-cb-${i}:checked`)).map(cb => cb.value);
-
-          if (itemAmt > 0 && users.length > 0) {
-            items.push({ name: itemName, amount: itemAmt, assignedUsers: users });
-            total += itemAmt;
+        for (let i = 1; i <= state.itemCounter; i++) {
+          const nEl = document.querySelector(`.it-name-${i}`);
+          const aEl = document.querySelector(`.it-amt-${i}`);
+          if (!nEl || !aEl) continue;
+          const amt = Number(aEl.value || 0);
+          const users = Array.from(document.querySelectorAll(`.it-cb-${i}:checked`)).map(c => c.value);
+          if (amt > 0 && users.length > 0) {
+            details.push({ name: nEl.value || `รายการ ${i}`, amount: amt, assignedUsers: users });
+            totalAmount += amt;
           }
         }
-        if (items.length === 0) return alert("กรุณากรอกรายการและราคาอย่างน้อย 1 รายการ");
-
-        payload.totalAmount = total;
-        payload.items = items;
+        if (details.length === 0) return alert("กรุณาเพิ่มรายการอย่างน้อย 1 รายการ");
       }
 
-      await apiPost(payload);
+      state.db = await callAPI({
+        action: "addExpense",
+        eventId: state.selectedEventId,
+        title,
+        totalAmount,
+        paidBy: document.getElementById("exPaidBy").value,
+        splitType: state.splitMode,
+        details
+      });
       closeModal("expenseModal");
-      document.getElementById("exTitle").value = "";
-      document.getElementById("exEqualAmount").value = "";
-      document.getElementById("exFile").value = "";
-      openEventDetail(appState.currentEventId);
+      renderNotifications();
+      renderEventDetail();
     }
 
-    // แปลงไฟล์เป็น Base64 สำหรับอัปโหลดลง Google Drive
-    function readFileAsBase64(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve({ base64: reader.result, name: file.name, type: file.type });
-        reader.readAsDataURL(file);
+    // ==========================================
+    // 5. DASHBOARD & CHARTS (Chart.js)
+    // ==========================================
+    function renderDashboard() {
+      const events = state.db.events || [];
+      const users = state.db.users || [];
+
+      let totalMoney = 0, tripCount = 0, sportCount = 0, completedCount = 0;
+      events.forEach(ev => {
+        if (ev.type === "Trip") tripCount++; else sportCount++;
+        if (ev.status === "Completed") completedCount++;
+        ev.expenses.forEach(ex => totalMoney += Number(ex.totalAmount));
       });
+
+      document.getElementById("kpiTotalEvents").innerText = events.length;
+      document.getElementById("kpiTotalMoney").innerText = totalMoney.toLocaleString() + " ฿";
+      document.getElementById("kpiTotalUsers").innerText = users.length;
+      document.getElementById("kpiCompleted").innerText = completedCount;
+
+      // กราฟแท่ง: ยอดการใช้งานรายเดือน
+      if (state.charts.monthly) state.charts.monthly.destroy();
+      state.charts.monthly = new Chart(document.getElementById("monthlyChart"), {
+        type: "bar",
+        data: {
+          labels: ["ส.ค.", "ก.ย.", "ต.ค.", "พ.ย. (ปัจจุบัน)"],
+          datasets: [{
+            label: "ยอดค่าใช้จ่ายหมุนเวียน (บาท)",
+            data: [4200, 6800, 5400, totalMoney || 3500],
+            backgroundColor: "#2563eb",
+            borderRadius: 8
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      // กราฟโดนัท: หมวดหมู่ยอดนิยม
+      if (state.charts.category) state.charts.category.destroy();
+      state.charts.category = new Chart(document.getElementById("categoryChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["ทริปเที่ยว (Trip)", "ตี้กีฬา/กิจกรรม (Sport)"],
+          datasets: [{
+            data: [tripCount, sportCount],
+            backgroundColor: ["#3b82f6", "#f59e0b"]
+          }]
+        }
+      });
+
+      // ประวัติย้อนหลัง
+      document.getElementById("dashboardLogs").innerHTML = (state.db.notifications || []).map(n => `
+        <div class="py-2.5 flex justify-between items-center">
+          <div><span class="font-bold text-slate-800">${n.title}:</span> <span class="text-slate-600">${n.message}</span></div>
+          <span class="text-[11px] text-slate-400 shrink-0">${n.time}</span>
+        </div>
+      `).join("");
+    }
+
+    // ==========================================
+    // 6. ADMIN PANEL (RBAC & WEBHOOK SETTINGS)
+    // ==========================================
+    function renderAdminPanel() {
+      document.getElementById("adminWebhookInput").value = state.db.settings?.webhookUrl || "";
+      document.getElementById("adminUsersTable").innerHTML = state.db.users.map(u => `
+        <tr>
+          <td class="p-3 font-semibold">${u.name}</td>
+          <td class="p-3 text-slate-500">${u.username}</td>
+          <td class="p-3 text-slate-500">${u.promptPay || '-'}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100">${u.role}</span></td>
+          <td class="p-3">
+            <select onchange="changeRole('${u.id}', this.value)" class="border rounded-lg px-2 py-1 text-xs bg-white">
+              <option value="User" ${u.role === 'User' ? 'selected' : ''}>User</option>
+              <option value="Provider" ${u.role === 'Provider' ? 'selected' : ''}>Provider</option>
+              <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+            </select>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function changeRole(userId, newRole) {
+      state.db = await callAPI({ action: "changeUserRole", userId, newRole });
+      renderAdminPanel();
+      alert("✅ อัปเดตสิทธิ์ผู้ใช้งานเรียบร้อยแล้ว");
+    }
+
+    async function saveWebhookUrl() {
+      const webhookUrl = document.getElementById("adminWebhookInput").value.trim();
+      state.db = await callAPI({ action: "saveWebhook", webhookUrl });
+      alert("✅ บันทึกลิงก์แจ้งเตือน Webhook เรียบร้อยแล้ว");
+    }
+
+    async function resetDemo() {
+      if (!confirm("ต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นใช่หรือไม่?")) return;
+      state.db = await callAPI({ action: "resetDemoData" });
+      renderAdminPanel();
+      alert("✅ รีเซ็ตข้อมูลเรียบร้อยแล้ว");
     }
   </script>
 </body>
