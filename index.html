@@ -1,1 +1,257 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>หารกัน</title>
+<style>
+:root{--bg:#f4f6f5;--card:#fff;--text:#17211d;--mute:#66736d;--line:#dbe2de;--main:#0f7a55;--bad:#b3362b}
+@media(prefers-color-scheme:dark){:root{--bg:#101513;--card:#19201d;--text:#e8eeeb;--mute:#93a29b;--line:#2c3732;--main:#3dbd8c;--bad:#f0887d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,"Noto Sans Thai",sans-serif}
+main{max-width:640px;margin:auto;padding:16px}
+h1{font-size:1.4rem;margin:8px 0}h2{font-size:1.1rem;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+label{display:block;font-size:.85rem;color:var(--mute);margin-top:8px}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit}
+button{padding:9px 14px;border:0;border-radius:8px;background:var(--main);color:var(--card);font:inherit;cursor:pointer;margin:8px 6px 0 0}
+button.alt{background:transparent;color:var(--main);border:1px solid var(--main)}
+button.del{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+button:disabled{opacity:.5}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips label{display:flex;gap:6px;align-items:center;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:99px;color:var(--text)}
+.chips input{width:auto}
+.item{border-top:1px dashed var(--line);margin-top:12px;padding-top:4px}
+.mute{color:var(--mute);font-size:.85rem}.plus{color:var(--main)}.minus{color:var(--bad)}
+nav button{margin-top:0}
+#msg{position:fixed;left:16px;right:16px;bottom:16px;margin:auto;max-width:608px;padding:12px;border-radius:8px;background:var(--text);color:var(--bg);display:none;z-index:9}
+img.qr{display:block;margin:10px auto 0;background:#fff;padding:8px;width:220px;max-width:100%}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="msg" role="status"></div>
+<script>
+// ใส่ URL ของ Web App (ลงท้าย /exec) ที่ได้จาก Apps Script
+const API_URL = 'https://script.google.com/macros/s/AKfycbzqsWCbf2oiXiRlpDFovS6uc1R1_scAE9mSdhE1bBcfI7W0XOlEH7XEEm9haqwteUcB/exec';
+
+const store = {
+  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+let session = store.get('session'), data = null, gid = null, tab = 'bills', busy = false;
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const baht = s => (s/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const satang = v => Math.round(Number(v)*100);
+const nameOf = id => esc(data.members.find(m => m.id === id)?.name || '?');
+
+function toast(text){
+  const m = $('#msg'); m.textContent = text; m.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => m.style.display = 'none', 4000);
+}
+// ส่งเป็น text/plain เพื่อไม่ให้เกิด CORS preflight ซึ่ง Apps Script ไม่รองรับ
+async function api(action, payload = {}){
+  const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action, payload, token: session?.token})});
+  const j = await res.json();
+  if(!j.ok){
+    if(j.error.startsWith('AUTH')){ session = null; store.set('session', null); render(); }
+    throw new Error(j.error);
+  }
+  return j.data;
+}
+async function run(fn){
+  if(busy) return;
+  busy = true; document.body.style.cursor = 'progress';
+  app.querySelectorAll('button').forEach(b => b.disabled = true);
+  try{ await fn(); }
+  catch(e){ toast(e.message); }
+  finally{ busy = false; document.body.style.cursor = ''; app.querySelectorAll('button').forEach(b => b.disabled = false); }
+}
+async function load(){ data = await api('groupData', {groupId: gid}); render(); }
+const form = f => Object.fromEntries(new FormData(f));
+const field = (name, label, attrs = '') => `<label>${label}<input name="${name}" ${attrs}></label>`;
+const options = (list, selected) => list.map(([v,t]) => `<option value="${v}" ${v===selected?'selected':''}>${t}</option>`).join('');
+const chips = () => `<div class="chips">${data.members.map(m =>
+  `<label><input type="checkbox" value="${m.id}" checked>${esc(m.name)}</label>`).join('')}</div>`;
+const checked = el => [...el.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+
+function render(){
+  if(!session) return renderAuth();
+  if(!gid || !data) return renderHome();
+  renderGroup();
+}
+
+function renderAuth(){
+  app.innerHTML = `<h1>หารกัน</h1>
+  <form class="card" data-submit="login"><h2>เข้าสู่ระบบ</h2>
+    ${field('username','ชื่อผู้ใช้','required autocomplete="username"')}
+    ${field('password','รหัสผ่าน','type="password" required autocomplete="current-password"')}
+    <button>เข้าสู่ระบบ</button></form>
+  <form class="card" data-submit="register"><h2>สมัครสมาชิก</h2>
+    ${field('name','ชื่อที่แสดง','required maxlength="40"')}
+    ${field('username','ชื่อผู้ใช้ (a-z, 0-9)','required minlength="3"')}
+    ${field('password','รหัสผ่าน (8 ตัวขึ้นไป)','type="password" required minlength="8" autocomplete="new-password"')}
+    ${field('promptpay','พร้อมเพย์ (ไม่บังคับ)','inputmode="numeric"')}
+    <button>สมัคร</button></form>`;
+}
+
+async function renderHome(){
+  app.innerHTML = '<p class="mute">กำลังโหลด…</p>';
+  let groups;
+  try{ groups = await api('myGroups'); }
+  catch(e){ toast(e.message); if(session) app.innerHTML = '<button data-click="home">ลองใหม่</button>'; return; }
+  app.innerHTML = `<div class="row"><h1>สวัสดี ${esc(session.user.name)}</h1><button class="alt" data-click="logout">ออกจากระบบ</button></div>
+  <div class="card"><h2>กลุ่มของฉัน</h2>${groups.map(g =>
+    `<button class="alt" data-click="open" data-id="${g.id}">${esc(g.name)}</button>`).join('') || '<p class="mute">ยังไม่มีกลุ่ม สร้างใหม่หรือใส่รหัสเชิญด้านล่าง</p>'}</div>
+  <form class="card" data-submit="createGroup"><h2>สร้างกลุ่ม</h2>${field('name','ชื่อกลุ่ม','required')}<button>สร้าง</button></form>
+  <form class="card" data-submit="joinGroup"><h2>เข้าร่วมกลุ่ม</h2>${field('code','รหัสเชิญ','required')}<button>เข้าร่วม</button></form>
+  <form class="card" data-submit="profile"><h2>โปรไฟล์</h2>
+    ${field('name','ชื่อที่แสดง',`required value="${esc(session.user.name)}"`)}
+    ${field('promptpay','พร้อมเพย์',`inputmode="numeric" value="${esc(session.user.promptpay)}"`)}<button>บันทึก</button></form>`;
+}
+
+function renderGroup(){
+  const tabs = {bills:'บิล', activities:'กิจกรรม', settle:'เคลียร์เงิน', members:'สมาชิก'};
+  app.innerHTML = `<div class="row"><h1>${esc(data.group.name)}</h1><span><button class="alt" data-click="refresh">รีเฟรช</button><button class="alt" data-click="home">กลับ</button></span></div>
+  <nav>${Object.entries(tabs).map(([k,v]) => `<button class="${k===tab?'':'alt'}" data-click="tab" data-id="${k}">${v}</button>`).join('')}</nav>
+  ${{bills:viewBills, activities:viewActivities, settle:viewSettle, members:viewMembers}[tab]()}`;
+  if(tab === 'bills'){ addItem(); preview(); }
+}
+
+function viewBills(){
+  const mem = data.members.map(m => [m.id, esc(m.name)]);
+  return `<form class="card" id="billForm" data-submit="createBill"><h2>เพิ่มบิล</h2>
+    ${field('title','ชื่อบิล','required')}
+    <label>ผู้สำรองจ่าย<select name="paidBy">${options(mem, session.user.id)}</select></label>
+    <label>กิจกรรม<select name="activityId">${options([['','ไม่ระบุ'], ...data.activities.map(a => [a.id, esc(a.title)])])}</select></label>
+    <label>วิธีแบ่ง<select name="type">${options([['equal','หารเท่ากัน'],['itemized','แยกหลายรายการ']])}</select></label>
+    <div id="equal">${field('total','ยอดรวม (บาท)','type="number" min="0.01" step="0.01"')}<label>คนร่วมหาร</label>${chips()}</div>
+    <div id="itemized" hidden><div id="items"></div>
+      <button type="button" class="alt" data-click="addItem">+ เพิ่มรายการ</button>
+      ${field('discount','ส่วนลด (บาท)','type="number" min="0" step="0.01" value="0"')}
+      ${field('service','ค่าบริการ (%)','type="number" min="0" max="100" step="0.01" value="0"')}
+      ${field('vat','VAT (%)','type="number" min="0" max="100" step="0.01" value="0"')}</div>
+    <p id="preview" class="mute"></p><button>บันทึกบิล</button></form>
+  ${[...data.bills].reverse().map(b => {
+    const act = data.activities.find(a => a.id === b.activityId);
+    return `<div class="card"><div class="row"><b>${esc(b.title)}</b><b>${baht(b.total)} ฿</b></div>
+    <div class="mute">${b.type==='equal'?'หารเท่ากัน':'แยกรายการ'} · ${nameOf(b.paidBy)} จ่ายก่อน${act?' · '+esc(act.title):''}</div>
+    ${(b.detail.items||[]).map(i => `<div class="row mute"><span>${esc(i.name)} (${i.participants.map(nameOf).join(', ')})</span><span>${baht(i.price)}</span></div>`).join('')}
+    ${b.type==='itemized'?`<div class="mute">ส่วนลด ${baht(b.detail.discount)} ฿ · ค่าบริการ ${b.detail.service}% · VAT ${b.detail.vat}%</div>`:''}
+    ${Object.entries(b.shares).map(([u,v]) => `<div class="row"><span>${nameOf(u)}</span><span>${baht(v)}</span></div>`).join('')}
+    ${b.createdBy===session.user.id||data.group.ownerId===session.user.id?`<button class="del" data-click="deleteBill" data-id="${b.id}">ลบบิล</button>`:''}</div>`;
+  }).join('')}`;
+}
+
+function addItem(){
+  const d = document.createElement('div');
+  d.className = 'item';
+  d.innerHTML = `<label>ชื่อรายการ<input class="iname"></label><label>ราคารวมของรายการ (บาท)<input class="iprice" type="number" min="0.01" step="0.01"></label>${chips()}
+  <button type="button" class="del" data-click="removeItem">ลบรายการ</button>`;
+  $('#items').appendChild(d);
+}
+function billPayload(){
+  const f = $('#billForm'), v = form(f);
+  const p = {groupId: gid, title: v.title, paidBy: v.paidBy, activityId: v.activityId, type: v.type};
+  if(v.type === 'equal') return {...p, total: satang(v.total), participants: checked($('#equal'))};
+  return {...p, discount: satang(v.discount), service: Number(v.service), vat: Number(v.vat),
+    items: [...f.querySelectorAll('.item')].map(d => ({name: d.querySelector('.iname').value,
+      price: satang(d.querySelector('.iprice').value), participants: checked(d)}))};
+}
+function preview(){
+  const p = billPayload();
+  $('#equal').hidden = p.type !== 'equal';
+  $('#itemized').hidden = p.type === 'equal';
+  let text;
+  if(p.type === 'equal'){
+    const n = p.participants.length;
+    text = n && p.total > 0 ? `${n} คน คนละประมาณ ${baht(p.total/n)} ฿` : '';
+  } else {
+    const sub = p.items.reduce((a,i) => a + i.price, 0);
+    const total = Math.round((sub - p.discount)*(1+p.service/100)*(1+p.vat/100) + 1e-7);
+    text = sub > 0 ? `ยอดรายการ ${baht(sub)} ฿ · ยอดสุทธิ ${baht(total)} ฿` : '';
+  }
+  $('#preview').textContent = text;
+}
+
+function viewActivities(){
+  const word = {yes:'ไป', maybe:'ยังไม่แน่ใจ', no:'ไม่ไป'};
+  return `<form class="card" data-submit="createActivity"><h2>สร้างกิจกรรม</h2>
+    ${field('title','ชื่อกิจกรรม','required')}${field('date','วันและเวลา','type="datetime-local" required')}${field('location','สถานที่')}<button>สร้าง</button></form>
+  ${[...data.activities].sort((a,b) => a.date.localeCompare(b.date)).map(a => {
+    const spent = data.bills.filter(b => b.activityId === a.id).reduce((s,b) => s + b.total, 0);
+    return `<div class="card"><b>${esc(a.title)}</b>
+    <div class="mute">${esc(new Date(a.date).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}))} ${esc(a.location)} · ใช้ไป ${baht(spent)} ฿</div>
+    ${Object.entries(word).map(([k,v]) => `<button class="${a.rsvps[session.user.id]===k?'':'alt'}" data-click="rsvp" data-id="${a.id}" data-v="${k}">${v}</button>`).join('')}
+    ${Object.entries(word).map(([k,v]) => `<div class="mute">${v}: ${Object.keys(a.rsvps).filter(u => a.rsvps[u]===k).map(nameOf).join(', ') || '-'}</div>`).join('')}</div>`;
+  }).join('')}`;
+}
+
+function viewSettle(){
+  const me = session.user.id, state = {pending:'รอยืนยัน', confirmed:'จ่ายแล้ว', rejected:'ถูกปฏิเสธ'};
+  return `<div class="card"><h2>ยอดสุทธิ</h2>${data.members.map(m => { const v = data.balances[m.id] || 0;
+    return `<div class="row"><span>${esc(m.name)}</span><span class="${v<0?'minus':'plus'}">${v<0?'ต้องจ่าย':v>0?'ต้องได้รับ':'ครบแล้ว'} ${v?baht(Math.abs(v))+' ฿':''}</span></div>`; }).join('')}</div>
+  <div class="card"><h2>ใครต้องโอนให้ใคร</h2>${data.settlements.map(s => {
+    const to = data.members.find(m => m.id === s.toId);
+    return `<div class="item"><div class="row"><span>${nameOf(s.fromId)} → ${nameOf(s.toId)}</span><b>${baht(s.amount)} ฿</b></div>
+    ${s.fromId===me ? (to.promptpay
+        ? `<div class="mute">พร้อมเพย์ ${esc(to.promptpay)}</div><button class="alt" data-click="qr" data-pp="${esc(to.promptpay)}" data-amt="${s.amount}">แสดง QR</button>`
+        : '<div class="mute">ผู้รับยังไม่ได้ใส่พร้อมเพย์</div>')
+      + `<button data-click="pay" data-id="${s.toId}" data-amt="${s.amount}">แจ้งว่าโอนแล้ว</button><div></div>` : ''}</div>`;
+  }).join('') || '<p class="mute">ไม่มียอดค้าง</p>'}</div>
+  <div class="card"><h2>ประวัติการจ่าย</h2>${[...data.payments].reverse().map(p => `<div class="item">
+    <div class="row"><span>${nameOf(p.fromId)} → ${nameOf(p.toId)} ${baht(p.amount)} ฿</span><span class="mute">${state[p.status]}</span></div>
+    ${p.status==='pending'&&p.toId===me?`<button data-click="review" data-id="${p.id}" data-v="1">ได้รับแล้ว</button><button class="del" data-click="review" data-id="${p.id}" data-v="0">ปฏิเสธ</button>`:''}</div>`).join('') || '<p class="mute">ยังไม่มีรายการ</p>'}</div>`;
+}
+
+function viewMembers(){
+  return `<div class="card"><h2>รหัสเชิญ: ${esc(data.group.code)}</h2><p class="mute">ส่งรหัสนี้ให้เพื่อนเพื่อเข้ากลุ่ม</p>
+  ${data.members.map(m => `<div class="row"><span>${esc(m.name)}</span><span class="mute">${m.id===data.group.ownerId?'เจ้าของกลุ่ม':'สมาชิก'}</span></div>`).join('')}</div>`;
+}
+
+function saveSession(s){ session = s; store.set('session', s); }
+async function openGroup(id){ gid = id; data = null; tab = 'bills'; await load(); }
+
+const submits = {
+  login: async v => { saveSession(await api('login', v)); render(); },
+  register: async v => { saveSession(await api('register', v)); render(); },
+  createGroup: async v => openGroup((await api('createGroup', v)).id),
+  joinGroup: async v => openGroup((await api('joinGroup', v)).id),
+  profile: async v => { const user = await api('updateProfile', v); saveSession({...session, user}); toast('บันทึกแล้ว'); },
+  createActivity: async v => { await api('createActivity', {...v, groupId: gid}); await load(); },
+  createBill: async () => { await api('createBill', billPayload()); await load(); toast('บันทึกบิลแล้ว'); }
+};
+const clicks = {
+  logout: () => run(async () => { try{ await api('logout'); } finally { saveSession(null); gid = data = null; render(); } }),
+  home: () => { gid = data = null; render(); },
+  open: el => run(() => openGroup(el.dataset.id)),
+  refresh: () => run(load),
+  tab: el => { tab = el.dataset.id; render(); },
+  addItem: () => { addItem(); preview(); },
+  removeItem: el => { el.closest('.item').remove(); preview(); },
+  deleteBill: el => confirm('ลบบิลนี้?') && run(async () => { await api('deleteBill', {billId: el.dataset.id}); await load(); }),
+  rsvp: el => run(async () => { await api('rsvp', {activityId: el.dataset.id, status: el.dataset.v}); await load(); }),
+  qr: el => {
+    const box = el.parentElement.lastElementChild;
+    // ใช้บริการ promptpay.io สร้างภาพ QR (เบอร์/เลขและยอดจะถูกส่งไปที่บริการนี้)
+    box.innerHTML = `<img class="qr" alt="QR พร้อมเพย์" src="https://promptpay.io/${encodeURIComponent(el.dataset.pp)}/${(el.dataset.amt/100).toFixed(2)}.png"><div class="mute">ตรวจชื่อผู้รับและยอดในแอปธนาคารก่อนโอน</div>`;
+  },
+  pay: el => confirm('ยืนยันว่าคุณโอนเงินแล้ว?') && run(async () => { await api('createPayment', {groupId: gid, toId: el.dataset.id, amount: Number(el.dataset.amt)}); await load(); }),
+  review: el => run(async () => { await api('reviewPayment', {paymentId: el.dataset.id, approve: el.dataset.v === '1'}); await load(); })
+};
+
+app.addEventListener('submit', e => { e.preventDefault(); const f = e.target; run(() => submits[f.dataset.submit](form(f))); });
+app.addEventListener('click', e => { const el = e.target.closest('[data-click]'); if(el && !busy) clicks[el.dataset.click](el); });
+app.addEventListener('input', e => { if(e.target.closest('#billForm')) preview(); });
+app.addEventListener('change', e => { if(e.target.closest('#billForm')) preview(); });
+
+if(API_URL.startsWith('PASTE')) app.innerHTML = '<div class="card"><h2>ยังไม่ได้ตั้งค่า</h2>แก้ค่า API_URL ใน index.html ตามคู่มือ README.md</div>';
+else render();
+</script>
+</body>
+</html>
 
