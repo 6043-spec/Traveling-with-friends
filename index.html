@@ -3,56 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GroupSync Vibrant - จัดทริป ตี้กีฬา & หารเงินอัจฉริยะ</title>
+  <title>GroupSync Fun Trip & Sport - จัดทริป ตี้กีฬา & หารเงินสุดสนุก</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Prompt', sans-serif;
-      background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 45%, #ecfeff 100%);
+      background: linear-gradient(135deg, #fdf4ff 0%, #eff6ff 45%, #fefce8 100%);
       min-height: 100vh;
+      overflow-x: hidden;
     }
     .glass-panel {
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.93);
       backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.95);
     }
     .btn-vibrant {
       background: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #f59e0b 100%);
       background-size: 200% auto;
-      transition: 0.4s;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .btn-vibrant:hover { background-position: right center; transform: translateY(-1px); }
+    .btn-vibrant:hover { background-position: right center; transform: translateY(-2px) scale(1.02); }
     .btn-cyan { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); }
     .btn-emerald { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
     .btn-rose { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
-    .loader { border-top-color: #ec4899; animation: spinner 0.7s linear infinite; }
+
+    /* ================= CUSTOM PLAYFUL ANIMATIONS ================= */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(3deg); }
+    }
+    @keyframes bounceJoy {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-8px) scale(1.06); }
+    }
+    @keyframes driveCamper {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(115vw); }
+    }
+    @keyframes flyPlane {
+      0% { transform: translate(-10%, 10px) rotate(-5deg); }
+      50% { transform: translate(50vw, -18px) rotate(4deg); }
+      100% { transform: translate(110vw, -5px) rotate(-3deg); }
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-6deg); }
+      50% { transform: rotate(6deg); }
+    }
     @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .anim-float { animation: floatSlow 3.5s ease-in-out infinite; }
+    .anim-bounce-joy { animation: bounceJoy 2.2s ease-in-out infinite; }
+    .anim-wiggle { animation: wiggle 2s ease-in-out infinite; }
+    .anim-plane { animation: flyPlane 18s linear infinite; }
+    .anim-camper { animation: driveCamper 22s linear infinite; }
+    .loader { border-top-color: #ec4899; animation: spinner 0.7s linear infinite; }
+    .card-spring { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .card-spring:hover { transform: translateY(-6px) scale(1.015); }
   </style>
 </head>
 <body class="text-slate-800">
 
-  <!-- Loading Overlay -->
-  <div id="loading" class="fixed inset-0 bg-indigo-950/60 backdrop-blur-md z-50 flex flex-col items-center justify-center hidden">
-    <div class="loader rounded-full border-4 border-t-4 border-white/30 h-14 w-14 mb-3 shadow-lg"></div>
-    <p class="text-white text-sm font-bold tracking-wide">กำลังอัปเดตข้อมูล...</p>
+  <!-- Loading Overlay with Animated Mascot -->
+  <div id="loading" class="fixed inset-0 bg-indigo-950/65 backdrop-blur-md z-50 flex flex-col items-center justify-center hidden">
+    <div class="text-5xl anim-bounce-joy mb-2">🧳✈️</div>
+    <div class="loader rounded-full border-4 border-t-4 border-white/30 h-12 w-12 mb-3 shadow-lg"></div>
+    <p class="text-white text-sm font-extrabold tracking-wide">กำลังจัดกระเป๋า & ซิงค์ข้อมูล...</p>
   </div>
 
   <!-- ==================== SCREEN 1: AUTHENTICATION (LOGIN & REGISTER) ==================== -->
   <div id="authScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-amber-500 relative overflow-hidden">
-    <div class="absolute -top-20 -left-20 w-96 h-96 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse"></div>
-    <div class="absolute -bottom-20 -right-20 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse"></div>
+    
+    <!-- Floating Playful Travel & Sport Characters in Background -->
+    <div class="absolute top-12 left-8 text-5xl opacity-40 anim-float pointer-events-none select-none">🏝️</div>
+    <div class="absolute top-24 right-12 text-5xl opacity-40 anim-wiggle pointer-events-none select-none">🏸</div>
+    <div class="absolute bottom-16 left-12 text-5xl opacity-40 anim-bounce-joy pointer-events-none select-none">🏕️</div>
+    <div class="absolute bottom-20 right-10 text-5xl opacity-40 anim-float pointer-events-none select-none">🎒</div>
+    <div class="absolute top-1/3 left-0 text-4xl opacity-60 anim-plane pointer-events-none select-none">✈️💨</div>
 
     <div class="glass-panel rounded-3xl max-w-md w-full p-7 shadow-2xl relative z-10">
       <div class="text-center mb-5">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl btn-vibrant text-white font-extrabold text-2xl shadow-lg shadow-pink-500/30 mb-3">
-          GS
+        <!-- Cute Animated Mascot SVG -->
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-vibrant text-white shadow-xl shadow-pink-500/30 mb-3 anim-bounce-joy">
+          <svg class="w-12 h-12" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="34" r="20" fill="#FFE4E6"/>
+            <circle cx="25" cy="31" r="2.8" fill="#1E1B4B"/>
+            <circle cx="39" cy="31" r="2.8" fill="#1E1B4B"/>
+            <path d="M26 39C28.5 42.5 35.5 42.5 38 39" stroke="#E11D48" stroke-width="3" stroke-linecap="round"/>
+            <path d="M16 22L32 10L48 22H16Z" fill="#FBBF24"/>
+            <rect x="13" y="21" width="38" height="4" rx="2" fill="#F59E0B"/>
+            <circle cx="21" cy="36" r="3" fill="#FDA4AF" opacity="0.7"/>
+            <circle cx="43" cy="36" r="3" fill="#FDA4AF" opacity="0.7"/>
+          </svg>
         </div>
         <h1 class="text-2xl font-extrabold bg-gradient-to-r from-violet-600 via-pink-600 to-amber-600 bg-clip-text text-transparent">
-          GroupSync Platform
+          GroupSync Fun Trip!
         </h1>
-        <p class="text-xs text-slate-500 mt-1">จัดทริป ตี้กีฬา & หารเงินสุดสมาร์ท</p>
+        <p class="text-xs text-slate-500 mt-1">ชวนแก๊งเพื่อน จัดทริป ตีแบด & หารเงินแบบไร้ดราม่า</p>
       </div>
 
       <!-- Auth Tabs -->
@@ -76,7 +124,7 @@
           <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500">
         </div>
         <button onclick="handleLogin()" class="w-full btn-vibrant text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-pink-500/30">
-          เข้าสู่ระบบทันที 🚀
+          ออกเดินทางเลย 🚀
         </button>
 
         <!-- 1-Click Demo Login -->
@@ -133,11 +181,13 @@
   <!-- ==================== SCREEN 2: MAIN APPLICATION ==================== -->
   <div id="mainApp" class="hidden pb-24">
     
-    <!-- Top Rainbow-Dark Header -->
+    <!-- Top Rainbow Header -->
     <header class="bg-gradient-to-r from-violet-950 via-fuchsia-950 to-indigo-950 text-white sticky top-0 z-40 shadow-xl border-b border-white/10">
       <div class="max-w-5xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-2">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl btn-vibrant flex items-center justify-center font-extrabold text-base shadow-md">GS</div>
+          <div class="w-10 h-10 rounded-xl btn-vibrant flex items-center justify-center font-extrabold text-lg shadow-md anim-wiggle">
+            🎒
+          </div>
           <div>
             <h1 class="font-extrabold text-base tracking-wide leading-tight">GroupSync</h1>
             <span id="navRoleBadge" class="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold">User</span>
@@ -271,43 +321,72 @@
       <!-- ==================== PAGE C: EVENTS & EXPENSE SPLITTING ==================== -->
       <div id="page-events" class="main-page">
         
-        <!-- Sub-view 1: รายการทริป & ตี้กีฬา -->
-        <div id="eventsListView">
-          <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
-            <div>
-              <h2 class="text-2xl font-extrabold bg-gradient-to-r from-violet-700 via-pink-600 to-amber-600 bg-clip-text text-transparent">
-                ทริปเที่ยว & ตี้กีฬาทั้งหมด
-              </h2>
-              <p id="roleWelcomeText" class="text-xs text-slate-600 font-medium">ยินดีต้อนรับ</p>
+        <!-- Sub-view 1: รายการทริป & ตี้กีฬา + Fun Animated Banner -->
+        <div id="eventsListView" class="space-y-5">
+          
+          <!-- Fun Illustrated Adventure Banner (การ์ตูนรถแคมป์ปิ้ง & เครื่องบินขยับได้!) -->
+          <div class="relative rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white p-6 shadow-xl overflow-hidden">
+            <!-- Animated Clouds & Sun -->
+            <div class="absolute top-3 right-8 text-4xl anim-float select-none">☀️</div>
+            <div class="absolute top-4 left-1/3 text-2xl opacity-70 anim-float select-none">☁️</div>
+            <div class="absolute top-8 right-1/4 text-3xl opacity-80 anim-wiggle select-none">🎈</div>
+
+            <div class="relative z-10 flex flex-wrap justify-between items-center gap-4">
+              <div class="max-w-lg">
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full mb-2">
+                  ✨ Ready for Adventure!
+                </span>
+                <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">
+                  ทริปเที่ยว & ตี้กีฬาสุดมันส์
+                </h2>
+                <p id="roleWelcomeText" class="text-xs text-white/90 mt-1 font-medium">
+                  สร้างห้องเป็น Host ชวนเพื่อนเข้าแก๊ง โหวตที่เที่ยว และหารเงินจบในที่เดียว!
+                </p>
+              </div>
+              <button onclick="openModal('createEventModal')" class="bg-amber-300 hover:bg-amber-200 text-slate-950 text-xs md:text-sm font-extrabold px-5 py-3.5 rounded-2xl shadow-xl transition transform hover:scale-105 flex items-center gap-2">
+                <span class="text-lg anim-bounce-joy">🏕️</span> + สร้างทริป / เปิดตี้ใหม่
+              </button>
             </div>
-            <button onclick="openModal('createEventModal')" class="btn-vibrant text-white text-xs font-extrabold px-5 py-3 rounded-2xl shadow-lg shadow-pink-500/30">
-              ✨ + สร้างทริป / เปิดตี้ใหม่ (เป็น Host)
-            </button>
+
+            <!-- Animated Driving Camper Van at Bottom of Banner -->
+            <div class="mt-4 pt-2 border-t border-white/15 relative h-7 overflow-hidden">
+              <div class="anim-camper inline-flex items-center gap-2 text-lg whitespace-nowrap select-none">
+                <span>🚐💨</span>
+                <span class="text-[11px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full">กำลังออกเดินทางไปกับแก๊งเพื่อน...</span>
+                <span>⛰️🌲</span>
+              </div>
+            </div>
           </div>
 
+          <!-- Grid of Events -->
           <div id="eventsGrid" class="grid md:grid-cols-2 gap-4"></div>
         </div>
 
-        <!-- Sub-view 2: รายละเอียดทริป + สิทธิ์ Host + Status Pipeline + หารเงิน 2 แบบ -->
+        <!-- Sub-view 2: รายละเอียดทริป + สิทธิ์ Host (ลบห้องได้!) + Status Pipeline + หารเงิน 2 แบบ -->
         <div id="eventDetailView" class="hidden space-y-5">
-          <button onclick="closeEventDetail()" class="bg-white px-4 py-2 rounded-xl shadow-sm text-xs text-violet-700 font-extrabold hover:bg-violet-50 inline-flex items-center gap-1 border border-violet-100">
-            ← กลับหน้ารายการทั้งหมด
-          </button>
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <button onclick="closeEventDetail()" class="bg-white px-4 py-2 rounded-xl shadow-sm text-xs text-violet-700 font-extrabold hover:bg-violet-50 inline-flex items-center gap-1 border border-violet-100">
+              ← กลับหน้ารายการทั้งหมด
+            </button>
+
+            <!-- ปุ่มลบกิจกรรมของตัวเอง (แสดงเฉพาะ Host ของห้องนี้เท่านั้น!) -->
+            <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="btn-rose text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow-md hover:opacity-95 hidden flex items-center gap-1.5">
+              🗑️ ลบกิจกรรมนี้ (สิทธิ์ Host)
+            </button>
+          </div>
 
           <!-- EVENT BANNER & STATUS PIPELINE -->
           <div class="glass-panel rounded-3xl shadow-lg overflow-hidden">
-            <!-- Colorful Top Accent Strip -->
             <div class="h-2.5 btn-vibrant"></div>
             
             <div class="p-5">
               <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
                 <div>
-                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <div class="flex flex-wrap items-center gap-2 mb-1.5">
                     <span id="detTypeBadge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700">ทริป</span>
                     <span id="detHostBadge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">👑 Host: -</span>
-                    <!-- แสดงจำนวนคน + ปุ่มแก้ไขจำนวนคน (เฉพาะ Host) -->
                     <span id="detCapacityBox" class="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800">
-                      👥 <span id="detCapacityText">0/0</span> คน
+                      👥 0/0 คน
                     </span>
                   </div>
                   <h3 id="detTitle" class="text-xl font-extrabold text-slate-900">ชื่อกิจกรรม</h3>
@@ -318,12 +397,12 @@
                 <div id="statusActionArea" class="flex items-center gap-2"></div>
               </div>
 
-              <!-- 4 Steps Pipeline -->
+              <!-- 4 Steps Pipeline with Cute Icons -->
               <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-[11px]">
-                <div id="step-Open" class="p-2.5 rounded-2xl border font-bold transition">1. Open<br><span class="font-normal text-[10px]">เปิดรับสมาชิก</span></div>
-                <div id="step-Confirmed" class="p-2.5 rounded-2xl border font-bold transition">2. Confirmed<br><span class="font-normal text-[10px]">ยืนยันจัดกิจกรรม</span></div>
-                <div id="step-InProgress" class="p-2.5 rounded-2xl border font-bold transition">3. In Progress<br><span class="font-normal text-[10px]">เช็กชื่อ/เริ่มกิจกรรม</span></div>
-                <div id="step-Completed" class="p-2.5 rounded-2xl border font-bold transition">4. Completed<br><span class="font-normal text-[10px]">จบงาน/เคลียร์เงิน</span></div>
+                <div id="step-Open" class="p-2.5 rounded-2xl border font-bold transition">1. Open 📣<br><span class="font-normal text-[10px]">เปิดรับสมาชิก</span></div>
+                <div id="step-Confirmed" class="p-2.5 rounded-2xl border font-bold transition">2. Confirmed 🎟️<br><span class="font-normal text-[10px]">ยืนยันจัดกิจกรรม</span></div>
+                <div id="step-InProgress" class="p-2.5 rounded-2xl border font-bold transition">3. In Progress 🔥<br><span class="font-normal text-[10px]">เช็กชื่อ/เริ่มสนุก</span></div>
+                <div id="step-Completed" class="p-2.5 rounded-2xl border font-bold transition">4. Completed 🎉<br><span class="font-normal text-[10px]">จบงาน/เคลียร์เงิน</span></div>
               </div>
             </div>
           </div>
@@ -336,7 +415,7 @@
               <div class="glass-panel p-5 rounded-3xl shadow-md">
                 <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                   <div>
-                    <h4 class="font-extrabold text-sm text-violet-950">👥 สมาชิกในห้อง & เช็กชื่อ</h4>
+                    <h4 class="font-extrabold text-sm text-violet-950">👥 สมาชิกในแก๊ง & เช็กชื่อ</h4>
                     <p id="hostMemberHint" class="text-[11px] text-slate-400">รายชื่อผู้เข้าร่วมทั้งหมด</p>
                   </div>
                   <div class="flex gap-1.5">
@@ -353,7 +432,7 @@
 
               <div class="glass-panel p-5 rounded-3xl shadow-md">
                 <div class="flex justify-between items-center mb-3">
-                  <h4 class="font-extrabold text-sm text-violet-950">🗺️ แผนกิจกรรม & โหวตสถานที่</h4>
+                  <h4 class="font-extrabold text-sm text-violet-950">🗺️ แผนเที่ยว & โหวตจุดหมาย</h4>
                   <button onclick="openModal('itineraryModal')" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shadow">+ เพิ่มสถานที่</button>
                 </div>
                 <div id="detItineraryList" class="space-y-2.5 text-xs"></div>
@@ -362,13 +441,11 @@
 
             <!-- Right Column: ระบบหารเงิน 2 รูปแบบ + ลบบิล (เฉพาะ Host) + สรุปยอดโอน -->
             <div class="space-y-5">
-              <!-- สรุปยอดโอนสุทธิ -->
               <div class="bg-gradient-to-br from-violet-900 via-fuchsia-900 to-rose-900 text-white p-5 rounded-3xl shadow-xl">
                 <h4 class="font-extrabold text-sm mb-3 flex items-center gap-1.5">⚡ สรุปยอดโอนสุทธิ (ใครต้องโอนให้ใคร)</h4>
                 <div id="detSettlementList" class="space-y-2.5 text-xs"></div>
               </div>
 
-              <!-- บิลค่าใช้จ่าย -->
               <div class="glass-panel p-5 rounded-3xl shadow-md">
                 <div class="flex justify-between items-center mb-3">
                   <div>
@@ -393,7 +470,7 @@
   <!-- Modal: ปรับจำนวนคนรับสูงสุด (เฉพาะ Host) -->
   <div id="editMaxModal" class="fixed inset-0 bg-indigo-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl space-y-4 text-center">
-      <div class="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mx-auto font-bold">👥</div>
+      <div class="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-2xl mx-auto font-bold anim-bounce-joy">👥</div>
       <div>
         <h3 class="font-extrabold text-base text-slate-900">ปรับจำนวนคนรับสูงสุด</h3>
         <p class="text-xs text-slate-500">เฉพาะ Host สามารถปรับเพิ่ม-ลดจำนวนคนได้</p>
@@ -425,7 +502,7 @@
   <div id="createEventModal" class="fixed inset-0 bg-indigo-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-3 text-sm">
       <h3 class="font-extrabold text-lg text-slate-900">✨ สร้างทริป หรือ ห้องเล่นกีฬา</h3>
-      <p class="text-xs text-amber-600 font-semibold">👑 คุณจะเป็น Host ของห้องนี้โดยอัตโนมัติ</p>
+      <p class="text-xs text-amber-600 font-bold">👑 คุณจะเป็น Host ของห้องนี้ (สามารถจัดการคน ลบบิล และลบห้องได้)</p>
       <select id="newEvType" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white font-bold">
         <option value="Trip">✈️ ทริปเที่ยวกับเพื่อน</option>
         <option value="Sport">🏸 ตีแบด / กีฬา / บอร์ดเกม</option>
@@ -438,7 +515,7 @@
       </div>
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeModal('createEventModal')" class="px-4 py-2 text-xs font-bold text-slate-500">ยกเลิก</button>
-        <button onclick="submitNewEvent()" class="btn-vibrant text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow">สร้างห้องทันที</button>
+        <button onclick="submitNewEvent()" class="btn-vibrant text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow">สร้างห้องทันที 🚀</button>
       </div>
     </div>
   </div>
@@ -500,7 +577,7 @@
   <!-- ==================== JAVASCRIPT ==================== -->
   <script>
     // 🔴 ใส่ Web App URL (/exec) จาก Google Apps Script ตรงนี้ครับ
-    const API_URL = "https://script.google.com/macros/s/AKfycbx8wIOZghaSvLCuZUNs-8J8_kvLrP6m_CjGTSxBbkBOCiEio0oLMi3sB_lVCWQ68C98/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyxfan6KlAlqL-Fbis76_594FU77VyfiMKd_COYxIOcLz6ehPOYGUEZRST1OX-qeP2W/exec";
 
     let state = {
       db: null,
@@ -606,7 +683,7 @@
     function applyRolePermissions() {
       const role = state.currentUser.role;
       document.getElementById("navRoleBadge").innerText = `${state.currentUser.name} • ${role}`;
-      document.getElementById("roleWelcomeText").innerText = `สวัสดี ${state.currentUser.name} (${role}) — สร้างห้องเป็น Host เพื่อดึงเพื่อน/เตะเพื่อน ปรับจำนวนคน และจัดการบิลได้เต็มรูปแบบ`;
+      document.getElementById("roleWelcomeText").innerText = `สวัสดี ${state.currentUser.name} (${role}) — สร้างทริปเป็น Host ชวนเพื่อนเข้าแก๊ง โหวตที่เที่ยว และหารเงินกันเลย!`;
       document.getElementById("menu-admin").classList.toggle("hidden", role !== "Admin");
 
       if (role === "Admin") switchMainPage("page-dashboard");
@@ -653,11 +730,23 @@
     }
 
     // ==========================================
-    // 3. EVENTS & HOST PRIVILEGES
+    // 3. EVENTS & HOST PRIVILEGES (รวมลบกิจกรรม)
     // ==========================================
     function renderEventsGrid() {
       const grid = document.getElementById("eventsGrid");
       const events = state.db.events || [];
+      
+      if (events.length === 0) {
+        grid.innerHTML = `
+          <div class="md:col-span-2 glass-panel rounded-3xl p-10 text-center space-y-3">
+            <div class="text-5xl anim-bounce-joy">🏝️🏸</div>
+            <h3 class="font-extrabold text-lg text-slate-800">ยังไม่มีทริปหรือตี้กีฬาในขณะนี้</h3>
+            <p class="text-xs text-slate-500">กดปุ่ม "+ สร้างทริป / เปิดตี้ใหม่" ด้านบนเพื่อเริ่มต้นความสนุกได้เลย!</p>
+          </div>
+        `;
+        return;
+      }
+
       grid.innerHTML = events.map(ev => {
         const isTrip = ev.type === "Trip";
         const isHost = ev.hostId === state.currentUser.id;
@@ -669,22 +758,35 @@
           Completed: "bg-emerald-100 text-emerald-800"
         };
         return `
-          <div onclick="openEventDetail('${ev.id}')" class="glass-panel rounded-3xl shadow-md hover:shadow-xl hover:-translate-y-1 cursor-pointer transition overflow-hidden">
-            <div class="h-1.5 ${isTrip ? 'bg-gradient-to-r from-indigo-500 to-cyan-400' : 'bg-gradient-to-r from-pink-500 to-amber-400'}"></div>
+          <div onclick="openEventDetail('${ev.id}')" class="glass-panel rounded-3xl shadow-md hover:shadow-xl card-spring cursor-pointer overflow-hidden relative group">
+            <div class="h-2 ${isTrip ? 'bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400' : 'bg-gradient-to-r from-pink-500 via-rose-500 to-amber-400'}"></div>
+            
+            <!-- Animated Mini Character Sticker on Card -->
+            <div class="absolute right-4 bottom-12 text-3xl opacity-20 group-hover:opacity-80 group-hover:scale-125 transition pointer-events-none select-none anim-float">
+              ${isTrip ? '✈️' : '🏸'}
+            </div>
+
             <div class="p-5">
               <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center gap-1.5">
                   <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full ${isTrip ? 'bg-indigo-100 text-indigo-700' : 'bg-pink-100 text-pink-700'}">
                     ${isTrip ? '✈️ ทริปเที่ยว' : '🏸 กีฬา/กิจกรรม'}
                   </span>
-                  ${isHost ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-400 text-slate-900">👑 คุณเป็น Host</span>` : ''}
+                  ${isHost ? `<span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-300 text-slate-900 shadow-sm">👑 คุณเป็น Host</span>` : ''}
                 </div>
-                <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${statusColors[ev.status] || 'bg-slate-100'}">
-                  ● ${ev.status}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${statusColors[ev.status] || 'bg-slate-100'}">
+                    ● ${ev.status}
+                  </span>
+                  ${isHost ? `
+                    <button onclick="event.stopPropagation(); deleteEventById('${ev.id}', '${ev.title}')" class="bg-rose-100 hover:bg-rose-500 hover:text-white text-rose-600 p-1.5 rounded-xl text-xs transition" title="ลบกิจกรรมนี้">
+                      🗑️
+                    </button>
+                  ` : ''}
+                </div>
               </div>
               <h3 class="font-extrabold text-base text-slate-900">${ev.title}</h3>
-              <p class="text-xs text-slate-500 mt-1">📍 ${ev.location} • 🕒 ${ev.dateTime}</p>
+              <p class="text-xs text-slate-500 mt-1">📍 ${ev.location || '-'} • 🕒 ${ev.dateTime || '-'}</p>
               <p class="text-[11px] text-amber-700 font-semibold mt-1">👑 โฮสกลุ่ม: ${hostObj.name}</p>
               <div class="mt-3.5 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-600">
                 <span>👥 สมาชิก ${ev.participants.length}/${ev.maxPeople} คน</span>
@@ -710,8 +812,28 @@
         creatorId: state.currentUser.id
       });
       closeModal("createEventModal");
+      document.getElementById("newEvTitle").value = "";
       renderNotifications();
       renderEventsGrid();
+    }
+
+    // ลบกิจกรรมจากหน้าการ์ดรวม (เฉพาะ Host)
+    async function deleteEventById(eventId, title) {
+      if (!confirm(`⚠️ ยืนยันการลบกิจกรรม "${title}" ใช่หรือไม่?\n(ข้อมูลสมาชิก แผนเที่ยว และบิลทั้งหมดในห้องนี้จะถูกลบออก)`)) return;
+      state.db = await callAPI({ action: "deleteEvent", eventId });
+      renderNotifications();
+      renderEventsGrid();
+    }
+
+    // ลบกิจกรรมจากหน้ารายละเอียด (เฉพาะ Host)
+    async function deleteCurrentEvent() {
+      const ev = state.db.events.find(x => x.id === state.selectedEventId);
+      if (!ev) return;
+      if (!confirm(`⚠️ ยืนยันการลบกิจกรรม "${ev.title}" ใช่หรือไม่?\n(ข้อมูลทั้งหมดในห้องนี้จะถูกลบถาวร)`)) return;
+
+      state.db = await callAPI({ action: "deleteEvent", eventId: ev.id });
+      renderNotifications();
+      closeEventDetail();
     }
 
     function openEventDetail(eventId) {
@@ -728,7 +850,6 @@
       renderEventsGrid();
     }
 
-    // ตรวจสอบสิทธิ์ว่าเป็น Host ของห้องนี้หรือไม่
     function isCurrentUserHost(ev) {
       return ev.hostId === state.currentUser.id;
     }
@@ -740,12 +861,14 @@
       const isHost = isCurrentUserHost(ev);
       const hostObj = state.db.users.find(u => u.id === ev.hostId) || { name: ev.hostId };
 
+      // แสดงปุ่มลบกิจกรรมเฉพาะ Host เท่านั้น
+      document.getElementById("btnDeleteEvent").classList.toggle("hidden", !isHost);
+
       document.getElementById("detTitle").innerText = ev.title;
       document.getElementById("detTypeBadge").innerText = ev.type === "Trip" ? "✈️ ทริปเที่ยว" : "🏸 ตี้กีฬา/กิจกรรม";
       document.getElementById("detHostBadge").innerText = isHost ? `👑 Host: ${hostObj.name} (คุณ)` : `👑 Host: ${hostObj.name}`;
       document.getElementById("detSubInfo").innerText = `📍 ${ev.location || '-'} • 🕒 ${ev.dateTime || '-'}`;
 
-      // แสดงจำนวนคน + ปุ่มดินสอปรับจำนวนคน (เฉพาะ Host เท่านั้น)
       const capBox = document.getElementById("detCapacityBox");
       capBox.innerHTML = `
         👥 ${ev.participants.length}/${ev.maxPeople} คน
@@ -762,7 +885,6 @@
         else el.className = "p-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-400";
       });
 
-      // ปุ่มกดไปหน้าถัดไปได้เลยโดยไม่ต้องรอคนเต็ม (Host, Provider, Admin กดได้ทันที)
       const actionArea = document.getElementById("statusActionArea");
       const canAdvance = isHost || state.currentUser.role === "Provider" || state.currentUser.role === "Admin";
       if (canAdvance && currentIdx < steps.length - 1) {
@@ -778,12 +900,12 @@
         actionArea.innerHTML = `<span class="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">✅ เสร็จสมบูรณ์ทุกขั้นตอน</span>`;
       }
 
-      // 2. Render Members (ดึงเพื่อน / เตะเพื่อน เฉพาะ Host)
+      // 2. Render Members
       const isJoined = ev.participants.some(p => p.userId === state.currentUser.id);
       document.getElementById("btnJoinSelf").classList.toggle("hidden", isJoined);
       document.getElementById("btnInviteFriend").classList.toggle("hidden", !isHost);
       document.getElementById("hostMemberHint").innerText = isHost
-        ? "👑 คุณเป็น Host: สามารถดึงเพื่อนเข้าห้อง หรือเตะสมาชิกออกได้"
+        ? "👑 คุณเป็น Host: ดึงเพื่อนเข้าห้อง หรือเตะสมาชิกออกได้"
         : "สมาชิกที่เข้าร่วมกิจกรรม";
 
       document.getElementById("detMembersList").innerHTML = ev.participants.map(p => {
@@ -824,11 +946,10 @@
           </div>
         `).join("");
 
-      // 4. Render Expenses & Settlement (ส่งสิทธิ์ isHost ไปแสดงปุ่มลบบิล)
+      // 4. Render Expenses & Settlement
       renderExpensesAndSettlement(ev, isHost);
     }
 
-    // ปรับจำนวนคนรับสูงสุด (เฉพาะ Host)
     function openEditMaxModal(currentMax) {
       document.getElementById("inputNewMaxPeople").value = currentMax;
       openModal("editMaxModal");
@@ -844,7 +965,6 @@
       renderEventDetail();
     }
 
-    // ดึงเพื่อนเข้าห้อง (เฉพาะ Host)
     function openInviteModal() {
       const ev = state.db.events.find(x => x.id === state.selectedEventId);
       const existingIds = ev.participants.map(p => p.userId);
@@ -880,7 +1000,6 @@
       renderEventDetail();
     }
 
-    // เตะเพื่อนออกจากห้อง (เฉพาะ Host)
     async function kickMember(targetUserId, targetName) {
       if (!confirm(`ต้องการเตะ "${targetName}" ออกจากกลุ่มนี้ใช่หรือไม่?`)) return;
       state.db = await callAPI({ action: "kickMember", eventId: state.selectedEventId, targetUserId });
@@ -931,7 +1050,7 @@
     }
 
     // ==========================================
-    // 4. EXPENSE SPLITTING & DELETE EXPENSE (HOST ONLY)
+    // 4. EXPENSE SPLITTING & DELETE EXPENSE
     // ==========================================
     function renderExpensesAndSettlement(ev, isHost) {
       let bal = {};
@@ -1003,7 +1122,6 @@
         }).join("");
     }
 
-    // ลบบิลค่าใช้จ่าย (เฉพาะ Host)
     async function deleteExpense(expenseId, title) {
       if (!confirm(`ต้องการลบบิล "${title}" ใช่หรือไม่? (ยอดโอนจะถูกคำนวณใหม่ทันที)`)) return;
       state.db = await callAPI({ action: "deleteExpense", eventId: state.selectedEventId, expenseId });
